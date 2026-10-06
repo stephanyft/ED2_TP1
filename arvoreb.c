@@ -2,10 +2,19 @@
 #include "arvoreb.h"
 #include <stdlib.h>
 
+typedef struct {
+    int chave;
+    long dado1;
+    char dado2[5000];
+} Registro;
+
+long comparacoes = 0;
+long transferencias = 0;
+
 void inicializa(TipoApontador* Arvore) {
     *Arvore = NULL;
 }
-void Pesquisa(TipoRegistro *x, TipoApontador Ap) {
+int Pesquisa(TipoRegistro *x, TipoApontador Ap) {
     long i = 1;
     if(Ap == NULL){
         printf("TipoRegistro nao esta presente na arovre\n");
@@ -38,6 +47,7 @@ void Insere(TipoRegistro Reg, TipoApontador* Ap){
 }
 
 void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRetorno, TipoApontador *ApRetorno){
+    
     long i = 1;
     long j;
     TipoApontador ApTemp;
@@ -47,15 +57,22 @@ void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRe
         *ApRetorno = NULL;
         return;
     }
-    while (i < Ap->n && Reg.Chave > Ap->r[i - 1].Chave)
-        i++;
-        if (Reg.Chave == Ap->r[i - 1].Chave) {
+    while (i < Ap->n){
+        comparacoes++;
+        if (Reg.Chave > Ap->r[i - 1].Chave) 
+            i++;
+        else
+            break;
+    }
+        comparacoes++;
+        if (Reg.Chave == Ap->r[i - 1].Chave){
             printf("Erro: Registro ja esta presente\n");
             *Cresceu = FALSE;
             return;
         }
-        if (Reg.Chave < Ap->r[i - 1].Chave)
-        i--;
+        comparacoes++;
+        if(Reg.Chave < Ap->r[i - 1].Chave)
+            i--;
         Ins(Reg, Ap->p[i], Cresceu, RegRetorno, ApRetorno);
 
         if(!*Cresceu)
@@ -117,4 +134,19 @@ void InsereNaPagina(TipoApontador Ap, TipoRegistro Reg, TipoApontador ApDir){
     Ap->r[k] = Reg;
     Ap->p[k+1] = ApDir;
     Ap->n++;
+}
+void CriaArvore(FILE * arq, TipoApontador *arvore) {
+    Registro reg;
+    TipoRegistro item;
+    long pos = 0;
+
+    inicializa(arvore);
+    rewind(arq);
+    while(fread(&reg, sizeof(Registro), 1, arq) == 1) {
+        transferencias++;
+        item.Chave = reg.chave;
+        item.Posicao = pos;
+        Insere(item, arvore);
+        pos++;
+    }
 }

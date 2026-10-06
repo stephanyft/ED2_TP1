@@ -26,10 +26,11 @@ typedef struct TipoPagina {
 } TipoPagina;
 
 void inicializa(TipoApontador* Arvore);
-void Pesquisa(TipoRegistro *x, TipoApontador Ap);
+int  Pesquisa(TipoRegistro *x, TipoApontador Ap);
 void Insere(TipoRegistro Reg, TipoApontador* Ap);
 void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRetorno, TipoApontador *ApRetorno);
 void InsereNaPagina(TipoApontador Ap, TipoRegistro Reg, TipoApontador ApDir);
 void Imprime(TipoApontador arvore);
+void CriaArvore(FILE *arq, TipoApontador *arvore);
 
 #endif
