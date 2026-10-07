@@ -11,9 +11,9 @@ typedef struct {
     int maior;
 }TipoNodo;
 
-FILE* inicializaABP(FILE *arq);
-void insereABP(FILE *abp, TipoNodo nodo, int *numComparacoes);
-Item* buscaABP(FILE *abp, int chave, int *numComparacoes);
+FILE* inicializaABP(FILE *arq, AnaliseExperimental *analise);
+void insereABP(FILE *abp, TipoNodo nodo, AnaliseExperimental *analise);
+Item* buscaABP(FILE *abp, int chave, AnaliseExperimental *analise);
 
 
 #endif // ABP_H

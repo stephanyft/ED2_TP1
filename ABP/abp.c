@@ -1,8 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "abp.h"
 
-FILE* inicializaABP(FILE *arq) {
+FILE* inicializaABP(FILE *arq, AnaliseExperimental *analise) {
+    clock_t inicio, fim;
+    inicio = clock();
+
     if(arq == NULL) {
         printf("Erro ao abrir o arquivo!\n");
         return NULL;
@@ -19,18 +23,20 @@ FILE* inicializaABP(FILE *arq) {
     TipoNodo nodo;
     int qtd;
     while((qtd = fread(&regs, sizeof(Item), TAM_PAGINA, arq)) > 0) {
+        analise->numTransferencias++; // Atualiza o número de transferências
         for(int i = 0; i < qtd; i++) {
             nodo.reg = regs[i];
             nodo.menor = -1;
             nodo.maior = -1;
-            insereABP(abp, nodo, NULL);
+            insereABP(abp, nodo, analise);
         }
     }
-
+    fim = clock();
+    analise->tempoExecucao = ((double)(fim - inicio)) / CLOCKS_PER_SEC;
     return abp;
 }
 
-void insereABP(FILE *abp, TipoNodo nodo, int *numComparacoes) {
+void insereABP(FILE *abp, TipoNodo nodo, AnaliseExperimental *analise) {
     if(abp == NULL) {
         printf("Erro ao abrir o arquivo ABP!\n");
         return;
@@ -50,7 +56,9 @@ void insereABP(FILE *abp, TipoNodo nodo, int *numComparacoes) {
     int posicaoAtual = 0;
     while(1) {
         fread(&nodoAtual, sizeof(TipoNodo), 1, abp);
+        analise->numComparacoes++; // Atualiza o número de comparações
         if(nodo.reg.chave < nodoAtual.reg.chave) {
+            analise->numComparacoes++; // Atualiza o número de comparações
             if(nodoAtual.menor == -1) {
                 nodoAtual.menor = pos;
                 fseek(abp, posicaoAtual * sizeof(TipoNodo), SEEK_SET);
@@ -63,6 +71,7 @@ void insereABP(FILE *abp, TipoNodo nodo, int *numComparacoes) {
             }
         } 
         else {
+            analise->numComparacoes++; // Atualiza o número de comparações
             if(nodoAtual.maior == -1) {
                 nodoAtual.maior = pos;
                 fseek(abp, posicaoAtual * sizeof(TipoNodo), SEEK_SET);
@@ -78,7 +87,10 @@ void insereABP(FILE *abp, TipoNodo nodo, int *numComparacoes) {
 
 }
 
-Item* buscaABP(FILE *abp, int chave, int *numComparacoes) {
+Item* buscaABP(FILE *abp, int chave, AnaliseExperimental *analise) {
+    clock_t inicio, fim;
+    inicio = clock();
+    
     if(abp == NULL) {
         printf("Erro ao abrir o arquivo ABP!\n");
         return NULL;
@@ -87,10 +99,14 @@ Item* buscaABP(FILE *abp, int chave, int *numComparacoes) {
     fseek(abp, 0, SEEK_SET);
     TipoNodo nodoAtual;
     while(1) {
+        analise->numTransferencias++; // Atualiza o número de transferências
         if(fread(&nodoAtual, sizeof(TipoNodo), 1, abp) != 1) {
             printf("Chave %d não encontrada na ABP.\n", chave);
+            fim = clock();
+            analise->tempoExecucao += ((double)(fim - inicio)) / CLOCKS_PER_SEC;
             return NULL;
         }
+        analise->numComparacoes++; // Atualiza o número de comparações
         if(chave == nodoAtual.reg.chave) {
             Item* resultado = malloc(sizeof(Item));
             if(resultado == NULL) {
@@ -98,21 +114,32 @@ Item* buscaABP(FILE *abp, int chave, int *numComparacoes) {
                 return NULL;
             }
             *resultado = nodoAtual.reg;
+            fim = clock();
+            analise->tempoExecucao += ((double)(fim - inicio)) / CLOCKS_PER_SEC;
             return resultado;
         }
-        else if(chave < nodoAtual.reg.chave) {
-            if(nodoAtual.menor == -1) {
-                printf("Chave %d não encontrada na ABP.\n", chave);
-                return NULL;
-            }
-            fseek(abp, nodoAtual.menor * sizeof(TipoNodo), SEEK_SET);
-        } 
         else {
-            if(nodoAtual.maior == -1) {
-                printf("Chave %d não encontrada na ABP.\n", chave);
-                return NULL;
+            analise->numComparacoes++; // Atualiza o número de comparações
+            if(chave < nodoAtual.reg.chave) {
+                analise->numComparacoes++; // Atualiza o número de comparações
+                if(nodoAtual.menor == -1) {
+                    fim = clock();
+                    analise->tempoExecucao += ((double)(fim - inicio)) / CLOCKS_PER_SEC;
+                    printf("Chave %d não encontrada na ABP.\n", chave);
+                    return NULL;
+                }
+                fseek(abp, nodoAtual.menor * sizeof(TipoNodo), SEEK_SET);
             }
-            fseek(abp, nodoAtual.maior * sizeof(TipoNodo), SEEK_SET);
+            else {
+                analise->numComparacoes++; // Atualiza o número de comparações
+                if(nodoAtual.maior == -1) {
+                    fim = clock();
+                    analise->tempoExecucao += ((double)(fim - inicio)) / CLOCKS_PER_SEC;
+                    printf("Chave %d não encontrada na ABP.\n", chave);
+                    return NULL;
+                }
+                fseek(abp, nodoAtual.maior * sizeof(TipoNodo), SEEK_SET);
+            }
         }
     }
 }
