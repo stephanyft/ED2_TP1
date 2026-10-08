@@ -21,7 +21,6 @@ int main(int argc, char *argv[]){
     if (argc == 6) {
         if(strcmp(argv[5], "-P") == 0)
             imprimir = 1;
-            
         else{
             printf("Erro: argumento opcional invalido (use -P)\n");
             return 1;
@@ -57,6 +56,9 @@ int main(int argc, char *argv[]){
             break;
         case 3: 
             executarMetodo3(quantidade, situacao, chave, imprimir, nomeArq, &metricas);
+            break;
+        case 4:
+            printf("Metodo 4 ainda nao implementado\n");
             break;
     }
     return 0; 

@@ -9,25 +9,25 @@
 void inicializa(TipoApontador* Arvore) {
     *Arvore = NULL;
 }
-
-int Pesquisa(TipoRegistro *x, TipoApontador Ap) {
+int Pesquisa(TipoRegistro *x, TipoApontador Ap, AnaliseExperimental *metricas) {
     long i = 1;
     if(Ap == NULL){
-        printf("TipoRegistro nao esta presente na arovre\n");
         return 0;
     }
     while(i < Ap->n && x->Chave > Ap->r[i-1].Chave){ 
         i++;
+        metricas->numComparacoes++;
     }
+    metricas->numComparacoes++;
     if(x->Chave == Ap->r[i-1].Chave){
         *x = Ap->r[i-1];
         return 1;
     }
     if(x->Chave < Ap->r[i - 1].Chave){
-        return Pesquisa(x, Ap->p[i - 1]);
+        return Pesquisa(x, Ap->p[i - 1], metricas);
     }
     else{
-        return Pesquisa(x, Ap->p[i]);
+        return Pesquisa(x, Ap->p[i], metricas);
     }
 }
 
@@ -133,7 +133,10 @@ void InsereNaPagina(TipoApontador Ap, TipoRegistro Reg, TipoApontador ApDir){
     Ap->p[k+1] = ApDir;
     Ap->n++;
 }
-void CriaArvore(FILE * arq, TipoApontador *arvore, int *comparacoesCriacao, int *transferenciasCriacao) {
+void CriaArvore(FILE * arq, TipoApontador *arvore, AnaliseExperimental *analise) {
+    clock_t inicio, fim;
+    inicio = clock();
+
     Item reg; 
     TipoRegistro itemIndice;
     long pos = 0;
@@ -142,86 +145,89 @@ void CriaArvore(FILE * arq, TipoApontador *arvore, int *comparacoesCriacao, int 
     rewind(arq);
 
     while(fread(&reg, sizeof(Item), 1, arq) == 1) {
-        (*transferenciasCriacao)++; 
+        analise->numTransferencias++; 
         itemIndice.Chave = reg.chave;
         itemIndice.posicaoNoArquivo = pos; 
         
         Insere(itemIndice, arvore);
         pos++;
     }
+
+    fim = clock();
+    analise->tempoExecucao = ((double)(fim - inicio)) / CLOCKS_PER_SEC;
 }
 
 void executarMetodo3(int quantidade, int situacao, int chaveBusca, int imprimir, const char *nomeArquivo, AnaliseExperimental *analise) {
-
-    AnaliseExperimental metricas; 
-    metricas.numComparacoes = 0;
-    metricas.numTransferencias = 0;
-    metricas.tempoExecucao = 0.0;
-
     FILE *arq = fopen(nomeArquivo, "rb");
-    if (imprimir == 1) {
-        printf("\n--- ARQUIVO DE REGISTROS ---\n");
-        mostraArquivo(nomeArquivo);
-    }
     if(arq == NULL) {
-        printf("Erro: nao foi possivel abrir o arquivo %s\n", nomeArquivo);
+        printf("Erro ao abrir o arquivo %s!\n", nomeArquivo);
         return;
     }
 
-    TipoApontador arvore;
-    int compCriacao = 0, transfCriacao = 0;
-    
+    AnaliseExperimental metricasI;
+    metricasI.numComparacoes = 0;
+    metricasI.numTransferencias = 0;
+    metricasI.tempoExecucao = 0.0;
+
     printf("\nConstruindo a Arvore B (Metodo 3)...\n");
-    clock_t ini = clock();
-    
-   
-    CriaArvore(arq, &arvore, &compCriacao, &transfCriacao);
-    
-    clock_t fim = clock();
-    double tempoCriacao = (double)(fim - ini) / CLOCKS_PER_SEC;
-    printf("\n--- RELATORIO DETALHADO DA CRIACAO ---\n");
-        printf("Transferencias (HD->RAM): %d\n", transfCriacao);
-        printf("Tempo construcao indice: %f s\n", tempoCriacao);
-   
+    TipoApontador arvore;
+    CriaArvore(arq, &arvore, &metricasI);
+
     analise->numComparacoes = 0;
     analise->numTransferencias = 0;
+    analise->tempoExecucao = 0.0;
 
+    printf("Pesquisando pela chave %d...\n", chaveBusca);
+    
     TipoRegistro itemBuscado;
-    Item regEncontrado; 
     itemBuscado.Chave = chaveBusca;
     itemBuscado.posicaoNoArquivo = -1;
 
-    printf("Pesquisando pela chave %d...\n", chaveBusca);
-    clock_t iniP = clock();
+    clock_t inicio, fim;
+    inicio = clock();
 
-    int achou = Pesquisa(&itemBuscado, arvore); 
-    
-       
-    clock_t fimP = clock();
-    analise->tempoExecucao = (double)(fimP - iniP) / CLOCKS_PER_SEC;
+    int achou = Pesquisa(&itemBuscado, arvore, analise); 
 
-    printf("\n--- ARVORE B EM MEMORIA ---\n");
-        Imprime(arvore);
-        printf("\n");
-
+    Item regEncontrado; 
     if(achou) {
         fseek(arq, itemBuscado.posicaoNoArquivo * (long)sizeof(Item), SEEK_SET);
         if (fread(&regEncontrado, sizeof(Item), 1, arq) == 1) {
             analise->numTransferencias++; 
         }
+        
+        fim = clock();
+        analise->tempoExecucao = ((double)(fim - inicio)) / CLOCKS_PER_SEC;
 
         printf("\n--- REGISTRO ENCONTRADO! ---\n");
         printf("Chave: %d\n", chaveBusca);
         printf("Dado 1: %ld\n", regEncontrado.dado1);
         printf("Dado 2: %.50s...\n", regEncontrado.dado2);
+        
+        printf("\n\n--- METRICAS DE DESEMPENHO DE CRIAÇÃO ---\n");
+        printf("Numero de transferencias da Criação: %d\n", metricasI.numTransferencias);
+        printf("Numero de comparacoes da Criação: %d\n", metricasI.numComparacoes);
+        printf("Tempo de execucao da Criação: %.5f segundos\n", metricasI.tempoExecucao);
+        
+        printf("\n\n--- METRICAS DE DESEMPENHO DE PESQUISA ---\n");
+        printf("Numero de transferencias da Pesquisa: %d\n", analise->numTransferencias);
+        printf("Numero de comparacoes da Pesquisa: %d\n", analise->numComparacoes);
+        printf("Tempo de execucao da Pesquisa: %.5f segundos\n", analise->tempoExecucao);
     } else {
-        printf("\nChave %d NAO encontrada.\n", chaveBusca);
+        fim = clock();
+        analise->tempoExecucao = ((double)(fim - inicio)) / CLOCKS_PER_SEC;
+        printf("Chave %d não encontrada na Arvore B.\n", chaveBusca);
     }
-    printf("\n--- ESTATISTICAS DE PESQUISA (METODO 3) ---\n");
-    printf("Transferencias de leitura: %d\n", metricas.numTransferencias);
-    printf("Comparacoes entre chaves: %d\n", metricas.numComparacoes);
-    printf("Tempo de pesquisa externa: %f s\n", metricas.tempoExecucao);
-   
+
+    if (imprimir) {
+        printf("\n--- CHAVES DE PESQUISA DO ARQUIVO ---\n");
+        rewind(arq); 
+        Item regTemp;
+        
+        while(fread(&regTemp, sizeof(Item), 1, arq) == 1) {
+            printf("%d ", regTemp.chave);
+        }
+        printf("\n");
+    }
 
     fclose(arq);
 }

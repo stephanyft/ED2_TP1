@@ -1,7 +1,7 @@
 #ifndef ABP_H
 #define ABP_H
 
-#include "..\item.h"
+#include "../item.h"
 
 #define TAM_PAGINA 4
 
