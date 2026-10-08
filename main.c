@@ -1,4 +1,5 @@
 #include "ARVORE-B/arvoreb.h"
+#include "ABP/abp.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +52,7 @@ int main(int argc, char *argv[]){
             printf("Metodo 1 ainda nao implemtnado\n");
             break;
         case 2:
-            printf("Metodo ainda nao implementado\n");
+            executarMetodo2(quantidade, situacao, chave, imprimir, nomeArq, &metricas);
             break;
         case 3: 
             executarMetodo3(quantidade, situacao, chave, imprimir, nomeArq, &metricas);
