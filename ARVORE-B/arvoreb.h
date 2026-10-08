@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "../item.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -26,11 +27,12 @@ typedef struct TipoPagina {
 } TipoPagina;
 
 void inicializa(TipoApontador* Arvore);
-int  Pesquisa(TipoRegistro *x, TipoApontador Ap);
+int Pesquisa(TipoRegistro *x, TipoApontador Ap);
 void Insere(TipoRegistro Reg, TipoApontador* Ap);
 void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRetorno, TipoApontador *ApRetorno);
 void InsereNaPagina(TipoApontador Ap, TipoRegistro Reg, TipoApontador ApDir);
 void Imprime(TipoApontador arvore);
-void CriaArvore(FILE *arq, TipoApontador *arvore);
+void CriaArvore(FILE * arq, TipoApontador *arvore, int *comparacoesCriacao, int *transferenciasCriacao);
+void executarMetodo3(int quantidade, int situacao, int chaveBusca, int imprimir, const char *nomeArquivo, AnaliseExperimental *analise);
 
 #endif
