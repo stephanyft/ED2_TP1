@@ -143,3 +143,53 @@ Item* buscaABP(FILE *abp, int chave, AnaliseExperimental *analise) {
         }
     }
 }
+
+void executarMetodo2(int quantidade, int situacao, int chaveBusca, int imprimir, const char *nomeArquivo, AnaliseExperimental *analise) {
+    FILE *arq = fopen(nomeArquivo, "rb");
+    if(arq == NULL) {
+        printf("Erro ao abrir o arquivo %s!\n", nomeArquivo);
+        return;
+    }
+
+    AnaliseExperimental metricasI;
+    metricasI.numComparacoes = 0;
+    metricasI.numTransferencias = 0;
+    metricasI.tempoExecucao = 0.0;
+
+    printf("\nConstruindo a ABP (Metodo 2)...\n");
+    FILE *abp = inicializaABP(arq, &metricasI);
+
+    analise->numComparacoes = 0;
+    analise->numTransferencias = 0;
+
+    printf("Pesquisando pela chave %d...\n", chaveBusca);
+    Item *resultado = buscaABP(abp, chaveBusca, analise);
+
+    if(resultado != NULL) { 
+        printf("\n--- REGISTRO ENCONTRADO! ---\n");
+        printf("Chave: %d\n", chaveBusca);
+        printf("Dado 1: %ld\n", resultado->dado1);
+        printf("Dado 2: %.50s...\n", resultado->dado2);
+        printf("\n\n--- METRICAS DE DESEMPENHO DE CRIAÇÃO ---\n");
+        printf("Numero de transferencias da Criação: %d\n", metricasI.numTransferencias);
+        printf("Numero de comparacoes da Criação: %d\n", metricasI.numComparacoes);
+        printf("Tempo de execucao da Criação: %.5f segundos\n", metricasI.tempoExecucao);
+        printf("\n\n--- METRICAS DE DESEMPENHO DE PESQUISA ---\n");
+        printf("Numero de transferencias da Pesquisa: %d\n", analise->numTransferencias);
+        printf("Numero de comparacoes da Pesquisa: %d\n", analise->numComparacoes);
+        printf("Tempo de execucao da Pesquisa: %.5f segundos\n", analise->tempoExecucao);
+        free(resultado);
+    }
+
+    if(imprimir) {
+        printf("\n--- IMPRESSÃO DA ABP ---\n");
+        fseek(abp, 0, SEEK_SET);
+        TipoNodo nodo;
+        while(fread(&nodo, sizeof(TipoNodo), 1, abp) == 1) {
+            printf("Chave: %d, Dado1: %ld, Dado2: %.50s\n", nodo.reg.chave, nodo.reg.dado1, nodo.reg.dado2);
+        }
+    }
+
+    fclose(arq);
+    fclose(abp);
+}
