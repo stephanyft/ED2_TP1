@@ -4,6 +4,7 @@
 #include <string.h>
 #include "../item.h"
 #include <time.h>
+#include "../geradorDeArquivos.h"
 
 void inicializa(TipoApontador* Arvore) {
     *Arvore = NULL;
@@ -158,6 +159,10 @@ void executarMetodo3(int quantidade, int situacao, int chaveBusca, int imprimir,
     metricas.tempoExecucao = 0.0;
 
     FILE *arq = fopen(nomeArquivo, "rb");
+    if (imprimir == 1) {
+        printf("\n--- ARQUIVO DE REGISTROS ---\n");
+        mostraArquivo(nomeArquivo);
+    }
     if(arq == NULL) {
         printf("Erro: nao foi possivel abrir o arquivo %s\n", nomeArquivo);
         return;
@@ -174,7 +179,9 @@ void executarMetodo3(int quantidade, int situacao, int chaveBusca, int imprimir,
     
     clock_t fim = clock();
     double tempoCriacao = (double)(fim - ini) / CLOCKS_PER_SEC;
-
+    printf("\n--- RELATORIO DETALHADO DA CRIACAO ---\n");
+        printf("Transferencias (HD->RAM): %d\n", transfCriacao);
+        printf("Tempo construcao indice: %f s\n", tempoCriacao);
    
     analise->numComparacoes = 0;
     analise->numTransferencias = 0;
@@ -193,6 +200,9 @@ void executarMetodo3(int quantidade, int situacao, int chaveBusca, int imprimir,
     clock_t fimP = clock();
     analise->tempoExecucao = (double)(fimP - iniP) / CLOCKS_PER_SEC;
 
+    printf("\n--- ARVORE B EM MEMORIA ---\n");
+        Imprime(arvore);
+        printf("\n");
 
     if(achou) {
         fseek(arq, itemBuscado.posicaoNoArquivo * (long)sizeof(Item), SEEK_SET);
@@ -207,20 +217,11 @@ void executarMetodo3(int quantidade, int situacao, int chaveBusca, int imprimir,
     } else {
         printf("\nChave %d NAO encontrada.\n", chaveBusca);
     }
-
+    printf("\n--- ESTATISTICAS DE PESQUISA (METODO 3) ---\n");
+    printf("Transferencias de leitura: %d\n", metricas.numTransferencias);
+    printf("Comparacoes entre chaves: %d\n", metricas.numComparacoes);
+    printf("Tempo de pesquisa externa: %f s\n", metricas.tempoExecucao);
    
-    if (imprimir) {
-        printf("\n--- RELATORIO DETALHADO DA CRIACAO ---\n");
-        printf("Transferencias (HD->RAM): %d\n", transfCriacao);
-        printf("Tempo construcao indice: %f s\n", tempoCriacao);
-        
-        printf("\n--- ARVORE B EM MEMORIA ---\n");
-        Imprime(arvore);
-        printf("\n");
-    }
-            printf("\n--- ESTATISTICAS DE PESQUISA (METODO 3) ---\n");
-            printf("Transferencias de leitura: %d\n", metricas.numTransferencias);
-            printf("Comparacoes entre chaves: %d\n", metricas.numComparacoes);
-            printf("Tempo de pesquisa externa: %f s\n", metricas.tempoExecucao);
+
     fclose(arq);
 }

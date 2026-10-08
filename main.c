@@ -20,6 +20,7 @@ int main(int argc, char *argv[]){
     if (argc == 6) {
         if(strcmp(argv[5], "-P") == 0)
             imprimir = 1;
+            
         else{
             printf("Erro: argumento opcional invalido (use -P)\n");
             return 1;
