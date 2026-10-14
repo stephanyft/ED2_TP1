@@ -3,6 +3,7 @@
 #include <time.h>
 #include "abp.h"
 
+//Função para inicializar a ABP a partir de um arquivo de registros
 FILE* inicializaABP(FILE *arq, AnaliseExperimental *analise) {
     clock_t inicio, fim;
     inicio = clock();
@@ -18,12 +19,15 @@ FILE* inicializaABP(FILE *arq, AnaliseExperimental *analise) {
         return NULL;
     }
 
+    //Vetor de itens para armazenar os registros lidos do arquivo
+    //reduzindo o número de transferências, lendo vários registros de uma vez
     Item regs[TAM_PAGINA];
     
     TipoNodo nodo;
     int qtd;
     while((qtd = fread(&regs, sizeof(Item), TAM_PAGINA, arq)) > 0) {
         analise->numTransferencias++; // Atualiza o número de transferências
+        //Laço de repetição para inserir cada registro lido do arquivo na ABP
         for(int i = 0; i < qtd; i++) {
             nodo.reg = regs[i];
             nodo.menor = -1;
@@ -36,37 +40,48 @@ FILE* inicializaABP(FILE *arq, AnaliseExperimental *analise) {
     return abp;
 }
 
+//Função para inserir um nodo na ABP externa
 void insereABP(FILE *abp, TipoNodo nodo, AnaliseExperimental *analise) {
     if(abp == NULL) {
         printf("Erro ao abrir o arquivo ABP!\n");
         return;
     }
 
+    //Move o ponteiro do arquivo para o final para inserir o novo nodo
     fseek(abp, 0, SEEK_END);
     fwrite(&nodo, sizeof(TipoNodo), 1, abp);
+
+    //Calcula a posição do novo nodo inserido
     long pos = ftell(abp) / sizeof(TipoNodo) - 1;
 
     if(pos == 0) {
         return; // Inserção do primeiro nodo
     }
 
+    /*Move o ponteiro do arquivo para o início para começar a busca 
+    do local correto para alterar os índices do Nodo pai*/
     fseek(abp, 0, SEEK_SET);
 
     TipoNodo nodoAtual;
     int posicaoAtual = 0;
     while(1) {
+        analise->numTransferencias++; // Atualiza o número de transferências
+        //Lê o nodo atual do arquivo
         fread(&nodoAtual, sizeof(TipoNodo), 1, abp);
+
         analise->numComparacoes++; // Atualiza o número de comparações
+        //Compara a chave do nodo a ser inserido com a chave do nodo atual
         if(nodo.reg.chave < nodoAtual.reg.chave) {
             analise->numComparacoes++; // Atualiza o número de comparações
             if(nodoAtual.menor == -1) {
                 nodoAtual.menor = pos;
-                fseek(abp, posicaoAtual * sizeof(TipoNodo), SEEK_SET);
+                fseek(abp, posicaoAtual * sizeof(TipoNodo), SEEK_SET); //Atualiza o ponteiro do arquivo para a posição do nodo atual
                 fwrite(&nodoAtual, sizeof(TipoNodo), 1, abp);
                 return;
             } 
             else {
                 posicaoAtual = nodoAtual.menor;
+                //Atualiza o ponteiro do arquivo para a posição do nodo menor
                 fseek(abp, posicaoAtual * sizeof(TipoNodo), SEEK_SET);
             }
         } 
@@ -74,12 +89,13 @@ void insereABP(FILE *abp, TipoNodo nodo, AnaliseExperimental *analise) {
             analise->numComparacoes++; // Atualiza o número de comparações
             if(nodoAtual.maior == -1) {
                 nodoAtual.maior = pos;
-                fseek(abp, posicaoAtual * sizeof(TipoNodo), SEEK_SET);
+                fseek(abp, posicaoAtual * sizeof(TipoNodo), SEEK_SET); //Atualiza o ponteiro do arquivo para a posição do nodo atual
                 fwrite(&nodoAtual, sizeof(TipoNodo), 1, abp);
                 return;
             } 
             else {
                 posicaoAtual = nodoAtual.maior;
+                //Atualiza o ponteiro do arquivo para a posição do nodo maior
                 fseek(abp, posicaoAtual * sizeof(TipoNodo), SEEK_SET);
             }
         }
@@ -87,6 +103,8 @@ void insereABP(FILE *abp, TipoNodo nodo, AnaliseExperimental *analise) {
 
 }
 
+
+//Função para buscar um registro na ABP externa
 Item* buscaABP(FILE *abp, int chave, AnaliseExperimental *analise) {
     clock_t inicio, fim;
     inicio = clock();
@@ -96,17 +114,21 @@ Item* buscaABP(FILE *abp, int chave, AnaliseExperimental *analise) {
         return NULL;
     }
 
-    fseek(abp, 0, SEEK_SET);
+    fseek(abp, 0, SEEK_SET); //Move o ponteiro do arquivo para o início da ABP
     TipoNodo nodoAtual;
+
     while(1) {
         analise->numTransferencias++; // Atualiza o número de transferências
+        //Lê o nodo atual do arquivo
         if(fread(&nodoAtual, sizeof(TipoNodo), 1, abp) != 1) {
             printf("Chave %d não encontrada na ABP.\n", chave);
             fim = clock();
             analise->tempoExecucao += ((double)(fim - inicio)) / CLOCKS_PER_SEC;
             return NULL;
         }
+
         analise->numComparacoes++; // Atualiza o número de comparações
+        //Compara a chave do nodo atual com a chave buscada
         if(chave == nodoAtual.reg.chave) {
             Item* resultado = malloc(sizeof(Item));
             if(resultado == NULL) {
@@ -116,18 +138,22 @@ Item* buscaABP(FILE *abp, int chave, AnaliseExperimental *analise) {
             *resultado = nodoAtual.reg;
             fim = clock();
             analise->tempoExecucao += ((double)(fim - inicio)) / CLOCKS_PER_SEC;
+            //retorna o ponteiro para o registro encontrado
             return resultado;
         }
         else {
             analise->numComparacoes++; // Atualiza o número de comparações
+            //Decide se deve ir para o nodo menor ou maior com base na comparação
             if(chave < nodoAtual.reg.chave) {
                 analise->numComparacoes++; // Atualiza o número de comparações
                 if(nodoAtual.menor == -1) {
                     fim = clock();
                     analise->tempoExecucao += ((double)(fim - inicio)) / CLOCKS_PER_SEC;
                     printf("Chave %d não encontrada na ABP.\n", chave);
+                    //retorna NULL se não encontrar a chave
                     return NULL;
                 }
+                //Atualiza o ponteiro do arquivo para a posição do nodo menor
                 fseek(abp, nodoAtual.menor * sizeof(TipoNodo), SEEK_SET);
             }
             else {
@@ -136,14 +162,18 @@ Item* buscaABP(FILE *abp, int chave, AnaliseExperimental *analise) {
                     fim = clock();
                     analise->tempoExecucao += ((double)(fim - inicio)) / CLOCKS_PER_SEC;
                     printf("Chave %d não encontrada na ABP.\n", chave);
+                    //retorna NULL se não encontrar a chave
                     return NULL;
                 }
+                //Atualiza o ponteiro do arquivo para a posição do nodo maior
                 fseek(abp, nodoAtual.maior * sizeof(TipoNodo), SEEK_SET);
             }
         }
     }
 }
 
+
+//Função para executar o método 2, que envolve a criação e busca na ABP externa
 void executarMetodo2(int quantidade, int situacao, int chaveBusca, int imprimir, const char *nomeArquivo, AnaliseExperimental *analise) {
     FILE *arq = fopen(nomeArquivo, "rb");
     if(arq == NULL) {
