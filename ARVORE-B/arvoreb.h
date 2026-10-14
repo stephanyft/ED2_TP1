@@ -8,9 +8,6 @@
 #define TRUE 1
 #define FALSE 0
 
-#define M 2
-#define MM 2 * M
-
 typedef int TipoChave;
 
 typedef struct TipoRegistro {

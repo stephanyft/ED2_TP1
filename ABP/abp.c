@@ -200,10 +200,12 @@ void executarMetodo2(int quantidade, int situacao, int chaveBusca, int imprimir,
         printf("Chave: %d\n", chaveBusca);
         printf("Dado 1: %ld\n", resultado->dado1);
         printf("Dado 2: %.50s...\n", resultado->dado2);
+
         printf("\n\n--- METRICAS DE DESEMPENHO DE CRIAÇÃO ---\n");
         printf("Numero de transferencias da Criação: %d\n", metricasI.numTransferencias);
         printf("Numero de comparacoes da Criação: %d\n", metricasI.numComparacoes);
         printf("Tempo de execucao da Criação: %.5f segundos\n", metricasI.tempoExecucao);
+
         printf("\n\n--- METRICAS DE DESEMPENHO DE PESQUISA ---\n");
         printf("Numero de transferencias da Pesquisa: %d\n", analise->numTransferencias);
         printf("Numero de comparacoes da Pesquisa: %d\n", analise->numComparacoes);
@@ -212,12 +214,14 @@ void executarMetodo2(int quantidade, int situacao, int chaveBusca, int imprimir,
     }
 
     if(imprimir) {
-        printf("\n--- IMPRESSÃO DA ABP ---\n");
-        fseek(abp, 0, SEEK_SET);
-        TipoNodo nodo;
-        while(fread(&nodo, sizeof(TipoNodo), 1, abp) == 1) {
-            printf("Chave: %d, Dado1: %ld, Dado2: %.50s\n", nodo.reg.chave, nodo.reg.dado1, nodo.reg.dado2);
+        printf("\n--- CHAVES DE PESQUISA DO ARQUIVO ---\n");
+        rewind(arq);
+        Item regTemp;
+        
+        while(fread(&regTemp, sizeof(Item), 1, arq) == 1) {
+            printf("%d ", regTemp.chave);
         }
+        printf("\n");
     }
 
     fclose(arq);

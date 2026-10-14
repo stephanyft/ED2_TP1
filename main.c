@@ -1,5 +1,6 @@
 #include "ARVORE-B/arvoreb.h"
 #include "ABP/abp.h"
+#include "ArvoreB_Estrela/includes/arvoreB_estrela.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,7 +59,7 @@ int main(int argc, char *argv[]){
             executarMetodo3(quantidade, situacao, chave, imprimir, nomeArq, &metricas);
             break;
         case 4:
-            printf("Metodo 4 ainda nao implementado\n");
+            executarMetodo4(quantidade, situacao, chave, imprimir, nomeArq, &metricas);
             break;
     }
     return 0; 

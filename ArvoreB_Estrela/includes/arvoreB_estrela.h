@@ -5,10 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "item.h"
-
-#define M 4
-#define MM (2 * M)
+#include "../../item.h"
 
 //Registro armazenado no índice da árvore
 typedef struct {
@@ -23,17 +20,17 @@ typedef enum {
 } TipoIntExt;
 
 //Ponteiro para uma página da árvore
-typedef struct TipoPagina *TipoApontador;
+typedef struct TipoPaginaE *TipoApontadorE;
 
 //Estrutura de uma página da árvore
-typedef struct TipoPagina {
+typedef struct TipoPaginaE {
     TipoIntExt Pt;
 
     union {
         struct {
             int ni;
             int ri[MM];
-            TipoApontador pi[MM + 1];
+            TipoApontadorE pi[MM + 1];
         } U0;
 
         struct {
@@ -41,35 +38,35 @@ typedef struct TipoPagina {
             RegistroIndiceBEstrela re[MM];
         } U1;
     } UU;
-} TipoPagina;
+} TipoPaginaE;
 
 //Inserção em página interna
 void InserePaginaInt(
-    TipoPagina *pag,
-    TipoApontador apontador,
+    TipoPaginaE *pag,
+    TipoApontadorE apontador,
     int ch
 );
 
 //Inserção em página externa
 int inserePaginaExterna(
-    TipoPagina *pagina,
+    TipoPaginaE *pagina,
     RegistroIndiceBEstrela *item,
     AnaliseExperimental *analise
 );
 
 //Inserção recursiva, com divisão de páginas quando necessário
 int insRecEstrela(
-    TipoApontador pagina,
+    TipoApontadorE pagina,
     RegistroIndiceBEstrela item,
     int *cresceu,
     int *chaveRetorno,
-    TipoApontador *apontadorRetorno,
+    TipoApontadorE *apontadorRetorno,
     AnaliseExperimental *analise
 );
 
 //Inserção na árvore inteira
 void InsereArvoreB_estrela(
-    TipoApontador *raiz,
+    TipoApontadorE *raiz,
     RegistroIndiceBEstrela item,
     AnaliseExperimental *analise
 );
@@ -77,13 +74,13 @@ void InsereArvoreB_estrela(
 //Construção do índice a partir do arquivo de registros
 void CriaArvoreB_estrela(
     FILE *arq,
-    TipoApontador *raiz,
+    TipoApontadorE *raiz,
     AnaliseExperimental *analise
 );
 
 //Pesquisa recursiva no índice
 int PesquisaRecEstrela(
-    TipoApontador ap,
+    TipoApontadorE ap,
     int chave,
     RegistroIndiceBEstrela *indice,
     AnaliseExperimental *analise
@@ -91,7 +88,7 @@ int PesquisaRecEstrela(
 
 //Pesquisa e recuperação do registro no arquivo
 int PesquisarChaveB_estrela(
-    TipoApontador raiz,
+    TipoApontadorE raiz,
     FILE *arq,
     int chave,
     Item *resultado,
@@ -100,12 +97,20 @@ int PesquisarChaveB_estrela(
 
 //Impressão da árvore para depuração
 void printArvoreEstrelaRec(
-    TipoApontador raiz,
+    TipoApontadorE raiz,
     int nivel
 );
 
 void printArvoreB_estrela(
-    TipoApontador raiz
+    TipoApontadorE raiz
 );
+
+void executarMetodo4(
+    int quantidade,
+    int situacao,
+    int chaveBusca,
+    int imprimir,
+    const char *nomeArquivo,
+    AnaliseExperimental *analise);
 
 #endif
