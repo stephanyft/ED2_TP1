@@ -2,7 +2,7 @@
 #define ITEM_H
 
 #define M 2
-#define MM 2 * M
+#define MM (2 * M)
 
 typedef struct{
     int chave;

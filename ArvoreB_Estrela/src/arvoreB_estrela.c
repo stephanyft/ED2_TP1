@@ -267,9 +267,9 @@ static int trataIrmaFolha(TipoApontadorE pai, int indiceFilho, TipoApontadorE *n
         }
 
         if (total == 2 * MM + 1) {
-            int qtdEsquerda = 6;
-            int qtdMeio = 5;
-            int qtdDireita = 6;
+            int qtdEsquerda = total / 3;
+            int qtdMeio = (total - qtdEsquerda) / 2;
+            int qtdDireita = total - qtdEsquerda - qtdMeio;
 
             preencherFolha(
                 atual, itens, 0, qtdEsquerda
@@ -335,9 +335,9 @@ static int trataIrmaFolha(TipoApontadorE pai, int indiceFilho, TipoApontadorE *n
         }
 
         if (total == 2 * MM + 1) {
-            int qtdEsquerda = 6;
-            int qtdMeio = 5;
-            int qtdDireita = 6;
+            int qtdEsquerda = total / 3;
+            int qtdMeio = (total - qtdEsquerda) / 2;
+            int qtdDireita = total - qtdEsquerda - qtdMeio;
 
             preencherFolha(
                 esquerda, itens, 0, qtdEsquerda
@@ -836,6 +836,14 @@ int PesquisarChaveB_estrela(TipoApontadorE raiz, FILE *arq, int chave, Item *res
     return 1;
 }
 
+void liberaArvoreB_estrela(TipoApontadorE raiz) {
+    if (raiz == NULL) return;
+    if (raiz->Pt == Interna)
+        for (int i = 0; i <= raiz->UU.U0.ni; i++)
+            liberaArvoreB_estrela(raiz->UU.U0.pi[i]);
+    free(raiz);
+}
+
 void executarMetodo4(int quantidade, int situacao, int chaveBusca, int imprimir, const char *nomeArquivo, AnaliseExperimental *analise) {
     FILE *arq = fopen(nomeArquivo, "rb");
     if (arq == NULL) {
@@ -878,17 +886,18 @@ void executarMetodo4(int quantidade, int situacao, int chaveBusca, int imprimir,
     else {
         printf("Chave %d não encontrada na Arvore B*.\n", chaveBusca);
     }
-    
+
     if (imprimir) {
         printf("\n--- CHAVES DE PESQUISA DO ARQUIVO ---\n");
         rewind(arq); 
         Item regTemp;
         
         while(fread(&regTemp, sizeof(Item), 1, arq) == 1) {
-            printf("%d ", regTemp.chave);
+            printf("Chave: %d , Dado1: %ld , Dado2: %.50s\n", regTemp.chave, regTemp.dado1, regTemp.dado2);
         }
         printf("\n");
     }
 
+    liberaArvoreB_estrela(raiz);
     fclose(arq);
 }

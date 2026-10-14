@@ -219,7 +219,7 @@ void executarMetodo2(int quantidade, int situacao, int chaveBusca, int imprimir,
         Item regTemp;
         
         while(fread(&regTemp, sizeof(Item), 1, arq) == 1) {
-            printf("%d ", regTemp.chave);
+            printf("Chave: %d , Dado1: %ld , Dado2: %.50s\n", regTemp.chave, regTemp.dado1, regTemp.dado2);
         }
         printf("\n");
     }

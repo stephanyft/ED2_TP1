@@ -31,11 +31,11 @@ int Pesquisa(TipoRegistro *x, TipoApontador Ap, AnaliseExperimental *metricas) {
     }
 }
 
-void Insere(TipoRegistro Reg, TipoApontador* Ap){
+void Insere(TipoRegistro Reg, TipoApontador* Ap, AnaliseExperimental *metricas) {
     short Cresceu;
     TipoRegistro RegRetorno;
     TipoPagina *ApRetorno, *ApTemp;
-    Ins (Reg, *Ap, &Cresceu, &RegRetorno, &ApRetorno);
+    Ins (Reg, *Ap, &Cresceu, &RegRetorno, &ApRetorno, metricas);
     if(Cresceu) {
         ApTemp = (TipoPagina *)malloc((sizeof(TipoPagina)));
         ApTemp->n = 1;
@@ -47,7 +47,7 @@ void Insere(TipoRegistro Reg, TipoApontador* Ap){
 
 }
 
-void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRetorno, TipoApontador *ApRetorno){
+void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRetorno, TipoApontador *ApRetorno, AnaliseExperimental *metricas){
     
     long i = 1;
     long j;
@@ -59,46 +59,50 @@ void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRe
         return;
     }
     while (i < Ap->n){
+        metricas->numComparacoes++;
         if (Reg.Chave > Ap->r[i - 1].Chave) 
             i++;
         else
             break;
     }
-        if (Reg.Chave == Ap->r[i - 1].Chave){
-            printf("Erro: Registro ja esta presente\n");
-            *Cresceu = FALSE;
-            return;
-        }
-        if(Reg.Chave < Ap->r[i - 1].Chave)
-            i--;
-        Ins(Reg, Ap->p[i], Cresceu, RegRetorno, ApRetorno);
+    metricas->numComparacoes++;
+    if (Reg.Chave == Ap->r[i - 1].Chave){
+        printf("Erro: Registro ja esta presente\n");
+        *Cresceu = FALSE;
+        return;
+    }
+    metricas->numComparacoes++;
+    if(Reg.Chave < Ap->r[i - 1].Chave)
+        i--;
+    Ins(Reg, Ap->p[i], Cresceu, RegRetorno, ApRetorno, metricas);
 
-        if(!*Cresceu)
-            return;
-        if(Ap->n < MM) {
-            InsereNaPagina(Ap, *RegRetorno, *ApRetorno);
-            *Cresceu = FALSE;
-            return;
-        }
-        ApTemp = (TipoApontador)malloc(sizeof(TipoPagina));
-        ApTemp->n = 0;
-        ApTemp->p[0] = NULL;
+    if(!*Cresceu)
+        return;
+    metricas->numComparacoes++;
+    if(Ap->n < MM) {
+        InsereNaPagina(Ap, *RegRetorno, *ApRetorno, metricas);
+        *Cresceu = FALSE;
+        return;
+    }
+    ApTemp = (TipoApontador)malloc(sizeof(TipoPagina));
+    ApTemp->n = 0;
+    ApTemp->p[0] = NULL;
 
-        if(i < M + 1) {
-            InsereNaPagina(ApTemp, Ap->r[MM -1], Ap->p[MM]);
-            Ap->n--;
-            InsereNaPagina(Ap, *RegRetorno, *ApRetorno);
-        }
-        else{
-            InsereNaPagina(ApTemp, *RegRetorno, *ApRetorno);
-        }
-        for(j = M + 2; j <= MM; j++)
-            InsereNaPagina(ApTemp, Ap->r[j - 1], Ap->p[j]);
-            Ap->n = M;
-            ApTemp->p[0] = Ap->p[M + 1];
-            *RegRetorno = Ap->r[M];
-            *ApRetorno = ApTemp;
-        
+    metricas->numComparacoes++;
+    if(i < M + 1) {
+        InsereNaPagina(ApTemp, Ap->r[MM -1], Ap->p[MM], metricas);
+        Ap->n--;
+        InsereNaPagina(Ap, *RegRetorno, *ApRetorno, metricas);
+    }
+    else{
+        InsereNaPagina(ApTemp, *RegRetorno, *ApRetorno, metricas);
+    }
+    for(j = M + 2; j <= MM; j++)
+        InsereNaPagina(ApTemp, Ap->r[j - 1], Ap->p[j], metricas);
+        Ap->n = M;
+        ApTemp->p[0] = Ap->p[M + 1];
+        *RegRetorno = Ap->r[M];
+        *ApRetorno = ApTemp;       
 }
 
 void Imprime(TipoApontador arvore) {
@@ -114,12 +118,13 @@ void Imprime(TipoApontador arvore) {
     }
 }
     
-void InsereNaPagina(TipoApontador Ap, TipoRegistro Reg, TipoApontador ApDir){
+void InsereNaPagina(TipoApontador Ap, TipoRegistro Reg, TipoApontador ApDir, AnaliseExperimental *metricas) {
     short NaoAchouPosicao;
     int k;
     k = Ap->n;
     NaoAchouPosicao = (k > 0);
     while (NaoAchouPosicao) {
+        metricas->numComparacoes++;
         if (Reg.Chave >= Ap->r[k - 1].Chave){
             NaoAchouPosicao = FALSE;
             break;
@@ -127,6 +132,7 @@ void InsereNaPagina(TipoApontador Ap, TipoRegistro Reg, TipoApontador ApDir){
         Ap->r[k] = Ap->r[k - 1];
         Ap->p[k + 1] = Ap->p[k];
         k--;
+        metricas->numComparacoes++;
         if (k < 1) NaoAchouPosicao = FALSE;
     }
     Ap->r[k] = Reg;
@@ -149,7 +155,7 @@ void CriaArvore(FILE * arq, TipoApontador *arvore, AnaliseExperimental *analise)
         itemIndice.Chave = reg.chave;
         itemIndice.posicaoNoArquivo = pos; 
         
-        Insere(itemIndice, arvore);
+        Insere(itemIndice, arvore, analise);
         pos++;
     }
 
@@ -224,7 +230,7 @@ void executarMetodo3(int quantidade, int situacao, int chaveBusca, int imprimir,
         Item regTemp;
         
         while(fread(&regTemp, sizeof(Item), 1, arq) == 1) {
-            printf("%d ", regTemp.chave);
+            printf("Chave: %d , Dado1: %ld , Dado2: %.50s\n", regTemp.chave, regTemp.dado1, regTemp.dado2);
         }
         printf("\n");
     }

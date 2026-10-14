@@ -25,9 +25,9 @@ typedef struct TipoPagina {
 
 void inicializa(TipoApontador* Arvore);
 int Pesquisa(TipoRegistro *x, TipoApontador Ap, AnaliseExperimental *metricas);
-void Insere(TipoRegistro Reg, TipoApontador* Ap);
-void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRetorno, TipoApontador *ApRetorno);
-void InsereNaPagina(TipoApontador Ap, TipoRegistro Reg, TipoApontador ApDir);
+void Insere(TipoRegistro Reg, TipoApontador* Ap, AnaliseExperimental *metricas);
+void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRetorno, TipoApontador *ApRetorno, AnaliseExperimental *metricas);
+void InsereNaPagina(TipoApontador Ap, TipoRegistro Reg, TipoApontador ApDir, AnaliseExperimental *metricas);
 void Imprime(TipoApontador arvore);
 void CriaArvore(FILE * arq, TipoApontador *arvore, AnaliseExperimental *analise);
 void executarMetodo3(int quantidade, int situacao, int chaveBusca, int imprimir, const char *nomeArquivo, AnaliseExperimental *analise);
