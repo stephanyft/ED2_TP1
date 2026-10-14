@@ -343,30 +343,75 @@ int insRecEstrela( TipoApontador pagina, RegistroIndiceBEstrela item, int *cresc
     return 1;
 }
 
-void InsereArvoreB_estrela(TipoApontador *raiz, RegistroIndiceBEstrela item, AnaliseExperimental *analise){
-    /*Trata arvores vazias*/
-    if(*raiz == NULL){
-        TipoPagina *nova_pag = malloc(sizeof(TipoPagina));
-        if(nova_pag == NULL){
+
+void InsereArvoreB_estrela(
+    TipoApontador *raiz,
+    RegistroIndiceBEstrela item,
+    AnaliseExperimental *analise
+) {
+    if (raiz == NULL || analise == NULL) {
+        return;
+    }
+
+    /* Caso 1: árvore vazia. */
+    if (*raiz == NULL) {
+        TipoApontador novaPagina =
+            calloc(1, sizeof(TipoPagina));
+
+        if (novaPagina == NULL) {
             return;
         }
 
-        nova_pag->Pt = Externa;
-        nova_pag->UU.U1.ne = 1;
-        nova_pag->UU.U1.re[0] = item;
-        *raiz = nova_pag;
+        novaPagina->Pt = Externa;
+        novaPagina->UU.U1.ne = 1;
+        novaPagina->UU.U1.re[0] = item;
+
+        *raiz = novaPagina;
         return;
     }
-    /*Trata paginas externas com espaço*/
 
-    /*INSERIR FUNÇAO INSEREPAGEXTRENA*/
+    /* Caso 2: árvore existente. */
+    int cresceu = 0;
+    int chaveRetorno = 0;
+    TipoApontador apontadorRetorno = NULL;
 
-    /*pesquisa pelas paginas internas*/
+    int resultado = insRecEstrela(
+        *raiz,
+        item,
+        &cresceu,
+        &chaveRetorno,
+        &apontadorRetorno,
+        analise
+    );
 
+    //A inserção falhou ou a chave já existia
+    if (resultado != 1) {
+        return;
+    }
 
+    //A raiz não se dividiu: a árvore continua com a mesma raiz
+    if (!cresceu) {
+        return;
+    }
 
+    /* Caso 3: a raiz se dividiu. Cria uma nova raiz interna com a chave separadora e os ponteiros para as páginas esquerda e direita.
+    */
+    TipoApontador novaRaiz =
+        calloc(1, sizeof(TipoPagina));
 
-    
+    if (novaRaiz == NULL) {
+        //A alocação falhou depois da divisão da raiz
+        return;
+    }
+
+    novaRaiz->Pt = Interna;
+    novaRaiz->UU.U0.ni = 1;
+
+    novaRaiz->UU.U0.ri[0] = chaveRetorno;
+    novaRaiz->UU.U0.pi[0] = *raiz;
+    novaRaiz->UU.U0.pi[1] = apontadorRetorno;
+
+    *raiz = novaRaiz;
 }
 
 //Impressão recursiva da árvore
