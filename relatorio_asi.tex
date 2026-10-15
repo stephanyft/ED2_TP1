@@ -1,0 +1,747 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazilian]{babel}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{microtype}
+
+\geometry{left=3cm,right=2cm,top=3cm,bottom=2cm}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0.15cm}
+\renewcommand{\contentsname}{Sumário}
+\renewcommand{\listtablename}{Lista de Tabelas}
+\renewcommand{\tablename}{Tabela}
+\renewcommand{\figurename}{Figura}
+
+\begin{document}
+\begin{titlepage}
+\centering
+{\large Universidade Federal de Ouro Preto -- UFOP\par}
+{\large Instituto de Ciências Exatas e Biológicas -- ICEB\par}
+{\large Departamento de Computação -- DECOM\par}
+{\large Ciência da Computação\par}
+\vspace{3cm}
+{\LARGE\bfseries Trabalho Prático 1\par}
+\vspace{0.4cm}
+{\Large BCC203 -- Estruturas de Dados II\par}
+\vspace{2cm}
+{\large
+Stephany Fernandes Torres (25.1.4022)\par
+Larissa Stefany Moura Silva (25.1.4029)\par
+Lucca Sales de Souza Teodoro (21.1.4011)\par
+Rafael Ferreira Lopes (25.1.4025)\par
+Maria Luiza de Almeida Guerra (25.1.4024)\par
+Matheus Duarte Souza Gonçalves (25.2.4152)\par
+\vspace{0.6cm}
+Professor: Guilherme Tavares de Assis\par}
+\vfill
+{\large Ouro Preto\par}
+{\large 15 de Outubro de 2026\par}
+\end{titlepage}
+
+\tableofcontents
+\listoftables
+\newpage
+
+\section{Introdução: Definição do Problema}
+
+Este trabalho prático tem como objetivo implementar na linguagem C e analisar o desempenho de quatro métodos de pesquisa em memória externa: acesso sequencial indexado, árvore binária de pesquisa adequada à memória externa, árvore B e árvore B*.
+
+A análise experimental avaliará a eficiência de cada algoritmo na manipulação de arquivos binários contendo grandes volumes de dados. O desempenho será medido considerando três pontos fundamentais: o número de transferências (leituras) da memória externa para a interna, o número de comparações entre as chaves de pesquisa e o tempo de execução.
+
+Os resultados obtidos permitirão comparar o comportamento de cada método na prática, evidenciando suas vantagens, limitações e viabilidade em diferentes cenários de quantidade de dados no disco.
+
+\section{Estrutura dos Dados e Metodologia de Testes}
+
+Os testes serão feitos utilizando arquivos binários com volumes de dados: 100, 200, 2.000, 20.000, 200.000 e 2.000.000 de registros. Cada registro do arquivo terá um tamanho fixo e será composto por: uma chave de pesquisa (valor inteiro), dado1 (valor inteiro longo), dado2 (cadeia de 5000 caracteres). Tem o gerador de arquivos que tem a finalidade de gerar os arquivos para os testes. 
+
+Esses arquivos vão ser organizados de três formas diferentes: ordenados de forma ascendente, ordenados de forma descendente e desordenados aleatoriamente. Vale ressaltar que, de acordo com as restrições de arquitetura de cada método de pesquisa implementado, algumas situações de ordenação do arquivo não se aplicam e serão desconsideradas nos testes.
+
+Para cada cenário de teste (combinação de método, quantidade de registros e situação do arquivo), ocorrerá a pesquisa automática de 20 chaves distintas, previamente selecionadas e garantidamente presentes no arquivo. Esta abordagem visa obter uma média consistente e representativa de cada um dos quesitos avaliados (transferências, comparações e tempo).
+
+\section{Implementação dos Métodos de Pesquisa Externa}
+
+\subsection{Acesso Sequencial Indexado}
+
+O método de Acesso Sequencial Indexado (ASI) implementado exige que o arquivo esteja
+ordenado de forma ascendente pela chave de pesquisa. Os registros permanecem no arquivo
+binário, agrupados logicamente em páginas de quatro itens, enquanto um índice esparso é
+mantido na memória principal. Para cada página, o índice armazena a chave de seu primeiro
+registro e a posição lógica em que a página começa no arquivo.
+
+A pesquisa ocorre em duas etapas. Inicialmente, a tabela de índices é percorrida
+sequencialmente até que seja encontrada a primeira chave maior que a chave procurada. A
+página candidata é, então, a página indicada pela entrada imediatamente anterior. Em
+seguida, somente essa página é lida do arquivo e seus registros são examinados
+sequencialmente. Portanto, em uma pesquisa bem-sucedida ocorre apenas uma transferência
+de página da memória externa para a memória interna. Em contrapartida, como a busca no
+índice também é sequencial, o número de comparações cresce linearmente com a quantidade
+de páginas.
+
+\subsubsection{Funções Implementadas}
+
+\texttt{gerarArquivo()}: cria o arquivo binário \texttt{registros.bin} antes da
+execução do método. Na situação 1, aplicável ao ASI, são geradas as chaves de 1 até
+$N$ em ordem crescente. O campo \texttt{dado1} recebe um valor pseudoaleatório e o
+campo \texttt{dado2} é preenchido por uma cadeia de caracteres. O tempo de geração
+desse arquivo não faz parte do tempo do método.
+
+\texttt{criaTabelaIndices()}: determina a quantidade de registros a partir do tamanho
+do arquivo e calcula o número de páginas por meio de
+$\lceil N/\texttt{ITENS\_POR\_PAGINA}\rceil$. Em seguida, aloca dinamicamente uma
+entrada do tipo \texttt{Indice} para cada página. A função lê somente o primeiro
+registro de cada página, guarda sua chave e a posição lógica do início da página, e
+salta os outros registros com \texttt{fseek()}. Cada primeiro registro lido é contado
+como uma transferência. A última página, caso incompleta, também recebe uma entrada no
+índice.
+
+\texttt{pesquisaSequencialIndexada()}: percorre linearmente o índice, contabilizando
+uma comparação para cada chave examinada, e seleciona a última página cuja chave
+inicial seja menor ou igual à chave procurada. A posição lógica é convertida em um
+deslocamento em bytes, e a página candidata é carregada com uma única chamada a
+\texttt{fread()}. Por fim, a função percorre sequencialmente os registros lidos,
+contabiliza as comparações e, se encontrar a chave, copia o registro completo para a
+variável de resultado.
+
+\texttt{executarMetodo1()}: coordena a execução do ASI. A função rejeita as situações
+2 e 3, pois o método depende da ordenação ascendente; abre o arquivo; solicita a
+criação da tabela; executa a pesquisa; apresenta o registro encontrado; e libera a
+memória alocada. Quando a opção \texttt{-P} é utilizada, também percorre o arquivo para
+mostrar suas chaves.
+
+\texttt{sortearChaves()}: no modo experimental, acionado quando a chave informada é
+$-1$, seleciona no arquivo 20 chaves distintas e existentes. As métricas das pesquisas
+são acumuladas para o cálculo das médias apresentadas pelo programa principal.
+
+\paragraph{Parâmetros de configuração}
+\begin{itemize}
+    \item \texttt{ITENS\_POR\_PAGINA = 4}: quantidade de registros carregados em uma página.
+    \item \texttt{Indice.chave}: primeira chave da página.
+    \item \texttt{Indice.primeiroRegistro}: posição lógica do primeiro registro da página no arquivo.
+\end{itemize}
+
+Não existe um limite fixo como \texttt{MAXTABELA}: o vetor de índices é alocado
+dinamicamente de acordo com o tamanho do arquivo. Para o maior experimento, com
+2.000.000 de registros, são necessárias
+\[
+\left\lceil\frac{2.000.000}{4}\right\rceil=500.000
+\text{ entradas no índice}.
+\]
+
+Na construção do índice são realizadas $\lceil N/4\rceil$ transferências e nenhuma
+comparação entre chaves. Na pesquisa, uma chave existente exige uma transferência de
+página. No pior caso, a busca realiza até $\lceil N/4\rceil$ comparações no índice e
+até quatro comparações dentro da página. Assim, a complexidade de pesquisa da
+implementação é $O(N/4+4)$, equivalente a $O(N)$ em número de comparações, embora o
+número de transferências da pesquisa permaneça constante.
+
+\newpage
+
+\subsection{Árvore Binária de Pesquisa em Memória Externa}
+
+Neste método, a árvore binária de pesquisa é armazenada em um arquivo binário próprio
+(\texttt{abp.bin}), separado do arquivo de registros. Cada nó da árvore é gravado como
+um bloco do tipo \texttt{TipoNodo}, que contém o registro completo (chave, \texttt{dado1}
+e \texttt{dado2}) e dois apontadores, \texttt{menor} e \texttt{maior}, que guardam a
+posição no arquivo do filho à esquerda e do filho à direita. O valor $-1$ indica que o
+filho não existe. A raiz da árvore é sempre o primeiro nó do arquivo (posição 0).
+
+Diferentemente das árvores B e B*, a árvore binária de pesquisa não possui mecanismo de
+balanceamento, e o seu formato depende diretamente da ordem em que os registros são
+inseridos. Em arquivos ordenados (ascendente ou descendente), cada nova chave é sempre
+inserida do mesmo lado, e a árvore degenera em uma lista encadeada. Isso faz com que
+o número de leituras e de comparações cresça muito, tanto na construção quanto na
+pesquisa.
+
+\subsection{Funções implementadas}
+
+\texttt{inicializaABP()}: realiza o pré-processamento do método. A função cria o arquivo
+\texttt{abp.bin} e lê o arquivo de registros em blocos de \texttt{TAM\_PAGINA} (4)
+registros por vez, contabilizando uma transferência por bloco lido. Cada registro lido é
+transformado em um nó, com os dois apontadores iniciados em $-1$, e inserido na árvore
+por meio de \texttt{insereABP()}. Ao final, é registrado o tempo total da construção.
+
+\texttt{insereABP()}: insere um nó na árvore armazenada em arquivo. O novo nó é gravado
+primeiro no final do arquivo, e sua posição é calculada a partir do tamanho do arquivo.
+Se ele for o primeiro nó, torna-se a raiz. Caso contrário, a função percorre a árvore a
+partir da raiz, lendo um nó por vez do arquivo (cada leitura conta como uma
+transferência) e comparando as chaves: segue para o filho \texttt{menor} se a nova chave
+for menor e para o filho \texttt{maior} caso contrário. Ao encontrar um apontador igual
+a $-1$, atualiza esse apontador com a posição do novo nó e regrava o nó pai no arquivo.
+
+\texttt{buscaABP()}: realiza a pesquisa de uma chave. A busca começa na raiz e, a cada
+passo, um nó é lido do arquivo para a memória principal, contabilizando uma
+transferência. Se a chave do nó for igual à procurada, o registro é copiado e devolvido.
+Caso contrário, a busca segue pelo filho \texttt{menor} ou \texttt{maior}, conforme a
+comparação. Se o apontador a ser seguido for $-1$, a chave não existe na árvore.
+
+\texttt{executarMetodo2()}: coordena a execução do método. Abre o arquivo de registros,
+chama \texttt{inicializaABP()} para construir a árvore e \texttt{buscaABP()} para
+pesquisar a chave, mantendo as métricas do pré-processamento e da pesquisa separadas.
+Em seguida, exibe o registro encontrado e as métricas de cada etapa. Quando o argumento
+\texttt{-P} é informado, também exibe as chaves do arquivo de registros.
+
+\newpage
+
+\section{Árvore B}
+
+A árvore B é uma árvore de pesquisa balanceada em que cada nó, chamado de página,
+armazena várias chaves em ordem crescente. Cada página possui até $2M$ registros e
+$2M+1$ apontadores para páginas filhas, e todas as folhas ficam no mesmo nível. Por
+isso, a altura da árvore é pequena, da ordem de $O(\log_M n)$, mesmo para uma grande
+quantidade de registros.
+
+Neste trabalho, a árvore B é mantida em memória principal e funciona como um índice
+para o arquivo de registros. Cada entrada da árvore (\texttt{TipoRegistro}) guarda apenas
+a chave e a posição do registro correspondente no arquivo (\texttt{posicaoNoArquivo}).
+Os registros completos permanecem no arquivo e só são lidos quando a chave procurada é
+encontrada.
+
+Na inserção, quando uma página cheia recebe um novo registro, ela é dividida em duas:
+o registro do meio sobe para a página pai, e os demais são repartidos entre as duas
+páginas. Se a divisão chegar à raiz, uma nova raiz é criada e a árvore cresce um nível.
+Assim, a árvore cresce sempre para cima e permanece balanceada, independentemente da
+ordem em que as chaves são inseridas.
+
+\newpage
+
+\subsection{Funções implementadas}
+
+\texttt{CriaArvore()}: realiza o pré-processamento do método. A função percorre o
+arquivo de registros do início ao fim, lendo um registro por vez (cada leitura conta
+como uma transferência). Para cada registro, monta uma entrada com a chave e a posição
+do registro no arquivo e a insere na árvore por meio de \texttt{Insere()}. Ao final,
+registra o tempo total da construção.
+
+\texttt{Insere()}: insere uma entrada na árvore a partir da raiz, chamando
+\texttt{Ins()}. Se a raiz for dividida durante a inserção, cria uma nova página raiz
+com o registro que subiu, tendo como filhos a raiz antiga e a nova página gerada pela
+divisão.
+
+\texttt{Ins()}: função recursiva que desce pela árvore até a folha onde a chave deve
+ser inserida, comparando a chave com as chaves de cada página. Na volta da recursão, se
+a página filha foi dividida, o registro que subiu é inserido na página atual. Se a
+página atual tiver espaço, a inserção termina; caso contrário, ela também é dividida e
+o registro do meio é repassado para o nível de cima. Chaves repetidas não são inseridas.
+
+\texttt{InsereNaPagina()}: insere um registro e seu apontador à direita dentro de uma
+página, deslocando as chaves maiores uma posição para a direita, de modo que a página
+continue ordenada.
+
+\texttt{Pesquisa()}: realiza a pesquisa de uma chave. Em cada página, as chaves são
+percorridas até encontrar a chave procurada ou a primeira chave maior que ela. Se a
+chave for encontrada, a posição do registro no arquivo é devolvida; caso contrário, a
+busca continua recursivamente na página filha correspondente. Se chegar a um apontador nulo, a chave não existe na árvore.
+
+\texttt{executarMetodo3()}: coordena a execução do método. Chama \texttt{CriaArvore()} para construir o índice e \texttt{Pesquisa()} para localizar a chave, mantendo as métricas de cada etapa separadas. Quando a chave é encontrada, o registro completo é lido do arquivo com uma única transferência, usando a posição guardada na árvore. Em seguida, exibe o registro e as métricas. Com o argumento \texttt{-P}, também exibe as chaves do arquivo de registros.
+
+\texttt{Imprime()}: percorre a árvore em ordem e exibe as chaves armazenadas, sendo usada para verificar se a árvore foi construída corretamente.
+
+\newpage
+
+\section{Árvore B*}
+
+A árvore B* é uma variação da árvore B em que existem dois tipos de página. As páginas
+internas guardam apenas chaves e apontadores e servem somente como guia para a
+pesquisa. Já as páginas externas (folhas) guardam todos os registros. Assim, toda
+chave existente aparece em uma folha, e toda pesquisa termina em uma folha. As chaves
+das páginas internas são cópias de chaves das folhas e indicam para qual lado a
+pesquisa deve seguir: se a chave procurada for menor que a chave da página interna,
+segue-se para a esquerda; se for maior ou igual, para a direita.
+
+Neste trabalho, a árvore B* é mantida em memória principal e funciona como um índice
+para o arquivo de registros. Cada entrada das folhas (\texttt{RegistroIndiceBEstrela})
+guarda a chave e a posição do registro correspondente no arquivo. Os registros
+completos permanecem no arquivo e só são lidos quando a chave procurada é encontrada.
+
+Além disso, foi implementada a política de irmãos nas folhas, característica da árvore
+B*: quando uma folha fica cheia, antes de criar uma nova página definitivamente, o
+algoritmo tenta redistribuir os registros com uma folha irmã que ainda tenha espaço.
+Se as irmãs também estiverem cheias, duas folhas cheias são divididas em três. Com
+isso, as folhas ficam mais preenchidas, e o número de páginas criadas diminui. Nas
+páginas internas, a divisão segue o funcionamento da árvore B convencional.
+
+\newpage
+
+\subsection{Funções implementadas}
+
+\texttt{CriaArvoreB\_estrela()}: realiza o pré-processamento do método. A função
+percorre o arquivo de registros do início ao fim, lendo um registro por vez (cada
+leitura conta como uma transferência). Para cada registro, monta uma entrada com a
+chave e a posição do registro no arquivo e a insere na árvore por meio de
+\texttt{InsereArvoreB\_estrela()}. Ao final, registra o tempo total da construção.
+
+\texttt{InsereArvoreB\_estrela()}: insere uma entrada na árvore a partir da raiz. Se a
+árvore estiver vazia, cria uma folha como raiz. Caso contrário, chama
+\texttt{insRecEstrela()} e, se a raiz for dividida, cria uma nova raiz interna com a
+chave separadora e as duas páginas resultantes como filhas.
+
+\texttt{insRecEstrela()}: função recursiva que desce pelas páginas internas até a folha
+onde a chave deve ser inserida. Se a folha tiver espaço, o registro é inserido
+diretamente. Se estiver cheia, a folha é dividida em duas, e a primeira chave da folha
+da direita é copiada para a página pai como chave separadora. Na volta da recursão, a
+página interna tenta resolver a divisão da folha com a política de irmãos; se não for
+possível, insere a chave separadora em si mesma ou, se também estiver cheia, divide-se
+e promove a sua chave central para o nível de cima.
+
+\texttt{trataIrmaFolha()}: aplica a política de irmãos após a divisão de uma folha.
+Primeiro tenta redistribuir os registros com a irmã direita e, depois, com a irmã
+esquerda, quando alguma delas tem espaço livre, eliminando a página criada. Se as duas
+irmãs estiverem cheias e a página pai tiver espaço, reparte o conteúdo das duas folhas
+cheias e do novo registro entre três folhas. Em todos os casos, as chaves separadoras
+da página pai são atualizadas.
+
+\texttt{inserePaginaExterna()} e \texttt{InserePaginaInt()}: inserem, respectivamente,
+um registro em uma folha e uma chave com seu apontador em uma página interna,
+deslocando os elementos maiores para manter a página ordenada. A inserção em folha
+também impede chaves repetidas.
+
+\texttt{PesquisaRecEstrela()}: percorre as páginas internas comparando a chave
+procurada com as chaves separadoras até chegar à folha correspondente. Na folha, as
+chaves são percorridas em ordem até encontrar a chave procurada ou uma chave maior que
+ela. Se a chave for encontrada, devolve a posição do registro no arquivo.
+
+\texttt{PesquisarChaveB\_estrela()}: realiza a pesquisa completa. Chama
+\texttt{PesquisaRecEstrela()} para localizar a chave no índice e, se ela for
+encontrada, lê o registro completo no arquivo com uma única transferência, usando a
+posição guardada na folha.
+
+\texttt{executarMetodo4()}: coordena a execução do método, mantendo as métricas do
+pré-processamento e da pesquisa separadas. Exibe o registro encontrado e as métricas
+de cada etapa e, com o argumento \texttt{-P}, também exibe as chaves do arquivo de
+registros. Ao final, libera a memória usada pela árvore com
+\texttt{liberaArvoreB\_estrela()}.
+
+\texttt{printArvoreB\_estrela()}: exibe a árvore por níveis, indicando quais páginas são
+internas e quais são folhas, e é usada para verificar se a árvore foi construída
+corretamente.
+
+\section{Metodologia de Testes e Coleta de Resultados}
+
+Para a realização da análise de desempenho dos métodos, os testes foram feitos de acordo com as diretrizes da segunda fase do trabalho prático. Foram gerados arquivos contendo diferentes volumes de registros ($N \in \{100, 200, 2.000, 20.000, 200.000, 2.000.000\}$), avaliados sob as situações de ordenação ascendente, descendente e aleatória.
+
+A avaliação do tempo gasto para a criação do arquivo de dados original não foi contabilizada no tempo de execução dos métodos.
+
+\subsection{Automação das Buscas e Cálculo de Médias}
+
+Para cada teste (mesmo método, quantidade de registros e situação de ordem), o sistema realizou a busca automática de 20 chaves de pesquisa distintas, escolhidas aleatoriamente, mas com garantia de existência prévia no arquivo de dados.
+
+Para cada uma das 20 buscas efetuadas, foram coletados os seguintes quesitos:
+\begin{itemize}
+    \item Número de transferências (leitura) de itens da memória externa para a interna.
+    \item Número de comparações entre as chaves de pesquisa.
+    \item Tempo de execução da pesquisa (tempo de término subtraído do tempo de início).
+\end{itemize}
+
+Os resultados finais apresentados nas seções a seguir representam a média aritmética dos valores obtidos nessas 20 execuções para cada cenário. Essa abordagem permitiu extrair uma métrica de desempenho mais estável e representativa para o comportamento de cada estrutura de dados em memória externa.
+
+\section{Análise de Desempenho Individual}
+
+\subsection{Avaliação: Acesso Sequencial Indexado}
+
+A Tabela~\ref{tab:asi} apresenta os resultados obtidos na etapa de pesquisa do método
+de Acesso Sequencial Indexado. Os valores correspondem à média de 20 buscas por chaves
+distintas, existentes e distribuídas pelo arquivo.
+
+\textbf{IMPORTANTE:} O método de Acesso Sequencial Indexado pressupõe arquivos ordenados pela chave de pesquisa. Dessa forma, apenas a situação de ordenação crescente foi considerada válida para execução do método.
+
+Como cada página contém quatro registros, a tabela de índices possui
+$\lceil N/4\rceil$ entradas. A construção lê o primeiro registro de cada página e não
+compara chaves; por isso, a quantidade de transferências dessa etapa é determinada
+diretamente por $N$, conforme a Tabela~\ref{tab:asi-criacao}. O tempo de criação não é
+apresentado porque não foi registrado separadamente na rodada de testes disponível;
+esse valor não deve ser estimado nem confundido com o tempo de geração de
+\texttt{registros.bin}.
+
+\begin{table}[H]
+\centering
+\caption{Operações realizadas na criação do índice do ASI}
+\label{tab:asi-criacao}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrr}
+\toprule
+Operação & 100 & 200 & 2.000 & 20.000 & 200.000 & 2.000.000\\
+\midrule
+Entradas do índice & 25 & 50 & 500 & 5.000 & 50.000 & 500.000\\
+Transferências & 25 & 50 & 500 & 5.000 & 50.000 & 500.000\\
+Comparações entre chaves & 0 & 0 & 0 & 0 & 0 & 0\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Desempenho do método de Acesso Sequencial Indexado}
+\label{tab:asi}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrrrl}
+\toprule
+Ordem & Operação & 100 registros & 200 registros & 2000 registros & 20000 registros & 200000 registros & 2000000 registros\\
+\midrule
+\multirow{3}{*}{Ascendente} & Pesquisa (segundos) & 0.000008& 0.000004& 0.000005& 0.000010&0.000052 &0.000819\\
+& Transferências & 1 & 1 & 1 & 1 & 1 & 1\\
+& Comparações & 16& 29& 285& 2286&25640 &253576\\
+\midrule
+\multirow{3}{*}{Descendente} & Pesquisa (segundos) & -- & -- & -- & -- & -- & --\\
+& Transferências & -- & -- & -- & -- & -- & --\\
+& Comparações & -- & -- & -- & -- & -- & --\\
+\midrule
+\multirow{3}{*}{Aleatória} & Pesquisa (segundos) & -- & -- & -- & -- & -- & --\\
+& Transferências & -- & -- & -- & -- & -- & --\\
+& Comparações & -- & -- & -- & -- & -- & --\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Os resultados mostram que todas as pesquisas bem-sucedidas utilizaram exatamente uma
+transferência, independentemente do tamanho do arquivo. Esse comportamento ocorre
+porque o índice fica na memória principal e somente a página candidata é carregada do
+arquivo. A quantidade de comparações, entretanto, aumentou de 16 para 253.576 quando o
+arquivo passou de 100 para 2.000.000 de registros. Esse crescimento aproximadamente
+linear decorre da varredura sequencial do índice, que possui uma entrada para cada
+quatro registros, e não da leitura da página, limitada a quatro comparações.
+
+O tempo médio também aumentou no maior conjunto, chegando a 0,000819 segundo. As
+pequenas oscilações observadas entre 100, 200 e 2.000 registros são compatíveis com a
+resolução do relógio e com variações normais de execução, pois os tempos medidos são
+muito pequenos. As situações descendente e aleatória foram corretamente marcadas como
+não aplicáveis, uma vez que a escolha da página pressupõe que as chaves iniciais das
+páginas estejam em ordem crescente.
+
+\subsection{Avaliação: Árvore Binária de Pesquisa}
+
+\textbf{IMPORTANTE:} O método de Árvore Binária de Pesquisa não considera entradas grandes (maiores que 10.000 itens) ordenadas previamente, pois a árvore gerada é, basicamente, uma lista encadeada, o que torna inviável a realização de testes. 
+
+\begin{table}[H]
+\centering
+\caption{Desempenho do método de Árvore Binária de Pesquisa}
+\label{tab:abp}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrrrl}
+\toprule
+Ordem & Operação & 100 registros & 200 registros & 2000 registros & 20000 registros & 200000 registros & 2000000 registros\\
+\midrule
+\multirow{3}{*}{Ascendente} & Pesquisa (segundos) & 0.000389 & 0.000626 & 0.009805 & -- & -- & --\\
+& Transferências & 49 & 95 & 1064 & -- & -- & --\\
+& Comparações & 146 & 285 & 3191 & -- & -- & --\\
+\midrule
+\multirow{3}{*}{Descendente} & Pesquisa (segundos) & 0.000257 & 0.000619 & 0.006389 & -- & -- & --\\
+& Transferências & 44 & 83 & 905 & -- & -- & --\\
+& Comparações & 130 & 249 & 2714 & -- & -- & --\\
+\midrule
+\multirow{3}{*}{Aleatória} & Pesquisa (segundos) & 0.000120 & 0.000215 & 0.000196 & 0.000324 & 0.000430 & --\\
+& Transferências & 6 & 9 & 12 & 21 & 23 & --\\
+& Comparações & 16 & 25 & 35 & 62 & 67 & --\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Avaliação: Árvore B}
+
+A Tabela~\ref{tab:arvoreb} apresenta os resultados obtidos para o método da Árvore B, que mantém sua estrutura sempre balanceada na memória interna.
+
+\begin{table}[H]
+\centering
+\caption{Desempenho do método da Árvore B}
+\label{tab:arvoreb}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrrrl}
+\toprule
+Ordem & Operação & 100 registros & 200 registros & 2000 registros & 20000 registros & 200000 registros & 2000000 registros\\
+\midrule
+\multirow{3}{*}{Ascendente} & Pesquisa (segundos) & 0.000002 & 0.000002 & 0.000003 & 0.000005 & 0.000005 & 0.000054\\
+& Transferências & 1 & 1 & 1 & 1 & 1 & 1\\
+& Comparações & 6 & 7 & 11 & 13 & 17 & 21\\
+\midrule
+\multirow{3}{*}{Descendente} & Pesquisa (segundos) & 0.000002 & 0.000005 & 0.000003 & 0.000004 & 0.000005 & 0.000041\\
+& Transferências & 1 & 1 & 1 & 1 & 1 & 1\\
+& Comparações & 5 & 7 & 10 & 14 & 18 & 21\\
+\midrule
+\multirow{3}{*}{Aleatória} & Pesquisa (segundos) & 0.000002 & 0.000004 & 0.000003 & 0.000004 & 0.000004 & 0.000047\\
+& Transferências & 1 & 1 & 1 & 1 & 1 & 1\\
+& Comparações & 6 & 7 & 11 & 14 & 19 & 22\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Avaliação: Árvore B*}
+
+A Tabela~\ref{tab:arvorebstar} apresenta os resultados obtidos para o método de Árvore B*, destacando a eficiência de dividir a informação apenas nas páginas folha.
+
+\begin{table}[H]
+\centering
+\caption{Desempenho do método da Árvore B*}
+\label{tab:arvorebstar}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrrrl}
+\toprule
+Ordem & Operação & 100 registros & 200 registros & 2000 registros & 20000 registros & 200000 registros & 2000000 registros\\
+\midrule
+\multirow{3}{*}{Ascendente} & Pesquisa (segundos) & 0.000065 & 0.000030 & 0.000029 & 0.000058 & 0.000060 & 0.000439\\
+& Transferências & 1 & 1 & 1 & 1 & 1 & 1\\
+& Comparações & 8 & 9 & 12 & 16 & 20 & 23\\
+\midrule
+\multirow{3}{*}{Descendente} & Pesquisa (segundos) & 0.000016 & 0.000046 & 0.000040 & 0.000053 & 0.000062 & 0.000254\\
+& Transferências & 1 & 1 & 1 & 1 & 1 & 1\\
+& Comparações & 8 & 9 & 12 & 15 & 20 & 23\\
+\midrule
+\multirow{3}{*}{Aleatória} & Pesquisa (segundos) & 0.000035 & 0.000031 & 0.000033 & 0.000046 & 0.000052 & 0.000139\\
+& Transferências & 1 & 1 & 1 & 1 & 1 & 1\\
+& Comparações & 8 & 10 & 14 & 17 & 21 & 25\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\section{Comparação entre os Métodos}
+
+\subsection{Pesquisa de 100 registros}
+
+\begin{table}[H]
+\centering
+\caption{Comparação dos métodos na pesquisa de 100 registros}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+Ordem & Operação & Acesso Sequencial Indexado & Árvore Binária & Árvore B & Árvore B*\\
+\midrule
+\multirow{3}{*}{Ascendente} & Pesquisa (segundos) & 0.000008 & 0.000389 & 0.000002 & 0.000065\\
+& Transferências & 1 & 49 & 1 & 1\\
+& Comparações & 16 & 146 & 6 & 8\\
+\midrule
+\multirow{3}{*}{Descendente} & Pesquisa (segundos) & -- & 0.000257 & 0.000002 & 0.000016\\
+& Transferências & -- & 44 & 1 & 1\\
+& Comparações & -- & 130 & 5 & 8\\
+\midrule
+\multirow{3}{*}{Aleatória} & Pesquisa (segundos) & -- & 0.000120 & 0.000002 & 0.000035\\
+& Transferências & -- & 6 & 1 & 1\\
+& Comparações & -- & 16 & 6 & 8\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Pesquisa de 200 registros}
+
+\begin{table}[H]
+\centering
+\caption{Comparação dos métodos na pesquisa de 200 registros}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+Ordem & Operação & Acesso Sequencial Indexado & Árvore Binária & Árvore B & Árvore B*\\
+\midrule
+\multirow{3}{*}{Ascendente} & Pesquisa (segundos) & 0.000004 & 0.000626 & 0.000002 & 0.000030\\
+& Transferências & 1 & 95 & 1 & 1\\
+& Comparações & 29 & 285 & 7 & 9\\
+\midrule
+\multirow{3}{*}{Descendente} & Pesquisa (segundos) & -- & 0.000619 & 0.000005 & 0.000046\\
+& Transferências & -- & 83 & 1 & 1\\
+& Comparações & -- & 249 & 7 & 9\\
+\midrule
+\multirow{3}{*}{Aleatória} & Pesquisa (segundos) & -- & 0.000215 & 0.000004 & 0.000031\\
+& Transferências & -- & 9 & 1 & 1\\
+& Comparações & -- & 25 & 7 & 10\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Pesquisa de 2.000 registros}
+
+\begin{table}[H]
+\centering
+\caption{Comparação dos métodos na pesquisa de 2.000 registros}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+Ordem & Operação & Acesso Sequencial Indexado & Árvore Binária & Árvore B & Árvore B*\\
+\midrule
+\multirow{3}{*}{Ascendente} & Pesquisa (segundos) & 0.000005 & 0.009805 & 0.000003 & 0.000029\\
+& Transferências & 1 & 1064 & 1 & 1\\
+& Comparações & 285 & 3191 & 11 & 12\\
+\midrule
+\multirow{3}{*}{Descendente} & Pesquisa (segundos) & -- & 0.006389 & 0.000003 & 0.000040\\
+& Transferências & -- & 905 & 1 & 1\\
+& Comparações & -- & 2714 & 10 & 12\\
+\midrule
+\multirow{3}{*}{Aleatória} & Pesquisa (segundos) & -- & 0.000196 & 0.000003 & 0.000033\\
+& Transferências & -- & 12 & 1 & 1\\
+& Comparações & -- & 35 & 11 & 14\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Pesquisa de 20.000 registros}
+
+\begin{table}[H]
+\centering
+\caption{Comparação dos métodos na pesquisa de 20.000 registros}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+Ordem & Operação & Acesso Sequencial Indexado & Árvore Binária & Árvore B & Árvore B*\\
+\midrule
+\multirow{3}{*}{Ascendente} & Pesquisa (segundos) & 0.000010 & -- & 0.000005 & 0.000058\\
+& Transferências & 1 & -- & 1 & 1\\
+& Comparações & 2286 & -- & 13 & 16\\
+\midrule
+\multirow{3}{*}{Descendente} & Pesquisa (segundos) & -- & -- & 0.000004 & 0.000053\\
+& Transferências & -- & -- & 1 & 1\\
+& Comparações & -- & -- & 14 & 15\\
+\midrule
+\multirow{3}{*}{Aleatória} & Pesquisa (segundos) & -- & 0.000324 & 0.000004 & 0.000046\\
+& Transferências & -- & 21 & 1 & 1\\
+& Comparações & -- & 62 & 14 & 17\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Pesquisa de 200.000 registros}
+
+\begin{table}[H]
+\centering
+\caption{Comparação dos métodos na pesquisa de 200.000 registros}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+Ordem & Operação & Acesso Sequencial Indexado & Árvore Binária & Árvore B & Árvore B*\\
+\midrule
+\multirow{3}{*}{Ascendente} & Pesquisa (segundos) & 0.000052 & -- & 0.000005 & 0.000060\\
+& Transferências & 1 & -- & 1 & 1\\
+& Comparações & 25640 & -- & 17 & 20\\
+\midrule
+\multirow{3}{*}{Descendente} & Pesquisa (segundos) & -- & -- & 0.000005 & 0.000062\\
+& Transferências & -- & -- & 1 & 1\\
+& Comparações & -- & -- & 18 & 20\\
+\midrule
+\multirow{3}{*}{Aleatória} & Pesquisa (segundos) & -- & 0.000430 & 0.000004 & 0.000052\\
+& Transferências & -- & 23 & 1 & 1\\
+& Comparações & -- & 67 & 19 & 21\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Pesquisa de 2.000.000 de registros}
+
+\begin{table}[H]
+\centering
+\caption{Comparação dos métodos na pesquisa de 2.000.000 de registros}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+Ordem & Operação & Acesso Sequencial Indexado & Árvore Binária & Árvore B & Árvore B*\\
+\midrule
+\multirow{3}{*}{Ascendente} & Pesquisa (segundos) & 0.000819 & -- & 0.000054 & 0.000439\\
+& Transferências & 1 & -- & 1 & 1\\
+& Comparações & 253576 & -- & 21 & 23\\
+\midrule
+\multirow{3}{*}{Descendente} & Pesquisa (segundos) & -- & -- & 0.000041 & 0.000254\\
+& Transferências & -- & -- & 1 & 1\\
+& Comparações & -- & -- & 21 & 23\\
+\midrule
+\multirow{3}{*}{Aleatória} & Pesquisa (segundos) & -- & -- & 0.000047 & 0.000139\\
+& Transferências & -- & -- & 1 & 1\\
+& Comparações & -- & -- & 22 & 25\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\section{Dificuldades de Implementação}
+
+Durante o desenvolvimento do trabalho, algumas dificuldades foram encontradas na
+implementação e na execução dos métodos de pesquisa externa. Uma das principais
+limitações esteve relacionada ao grande volume de dados utilizado nos testes,
+especialmente com os arquivos de até 2.000.000 de registros. Como cada registro possui
+um campo de 5000 caracteres, esses arquivos chegam a ocupar cerca de 10~GB, o que
+aumentou significativamente o tempo de processamento e o espaço em disco necessário.
+Além disso, como as árvores B e B* mantêm o índice em memória principal, o consumo de
+memória cresce junto com a quantidade de registros, e alguns computadores utilizados
+pelos integrantes do grupo apresentaram limitações na hora de rodar os testes.
+
+No Acesso Sequencial Indexado, foi necessário tratar corretamente a última página
+quando a quantidade de registros não é múltipla de quatro, além de calcular os
+deslocamentos de arquivo em bytes a partir da posição lógica armazenada no índice. A
+alocação dinâmica da tabela eliminou a dependência de um limite fixo, mas fez com que
+seu consumo de memória crescesse proporcionalmente ao número de páginas. Outro cuidado
+foi distinguir as métricas da construção do índice das métricas da pesquisa: a criação
+lê a primeira chave de cada página, enquanto cada busca lê somente a página candidata.
+Os testes também evidenciaram uma limitação da escolha de percorrer o índice
+sequencialmente, pois ela mantém baixo o número de transferências, mas faz o número de
+comparações crescer linearmente.
+
+Outra dificuldade relevante foi a implementação da Árvore B*, considerada o método mais
+complexo do trabalho. A separação entre páginas internas e folhas, a redistribuição de
+registros entre folhas irmãs e a divisão de duas folhas em três exigiram bastante
+cuidado, principalmente para manter corretas as chaves separadoras das páginas
+internas após cada operação.
+
+Na Árvore B, o código apresentado em aula serviu como base, mas precisou ser corrigido
+e adaptado, como nas funções de inicialização e de inserção, para funcionar com os
+registros do trabalho e guardar a posição de cada registro no arquivo. Já na Árvore
+Binária de Pesquisa, como cada nó é lido e regravado diretamente no arquivo, foi
+preciso controlar com atenção as posições de leitura e escrita, e a degeneração da
+árvore com arquivos ordenados tornou a sua construção muito lenta para as maiores
+quantidades de registros.
+
+Por fim, como cada integrante ficou responsável por um método, foi necessário combinar
+um mesmo critério para contar as transferências e as comparações, de forma que os
+resultados pudessem ser comparados de maneira justa, além de organizar a integração do
+código de todos no mesmo repositório com o Git.
+
+\section{Conclusão}
+
+Colocar a mão na massa e analisar os resultados deste trabalho nos permitiu entender,
+na prática, onde cada método de pesquisa em memória externa brilha e onde deixa a
+desejar. Para que essa comparação fosse justa, cada experimento foi feito com a
+pesquisa de 20 chaves distintas, bem diferenciadas e existentes no arquivo, e os
+resultados apresentados são a média dessas 20 pesquisas. Isso é importante porque o
+custo de uma pesquisa depende muito de onde a chave está: uma chave perto da raiz é
+encontrada rapidinho, enquanto uma chave lá no fundo da estrutura exige mais leituras e
+comparações. Com a média de 20 chaves espalhadas pelo arquivo, os números mostram o
+comportamento geral de cada método, e não um caso de sorte ou de azar.
+
+O Acesso Sequencial Indexado (ASI) se destacou pelo número constante de acessos ao
+disco durante a pesquisa: como a tabela de índices permanece na memória principal,
+somente a página candidata precisa ser carregada. Nos experimentos, todas as buscas
+bem-sucedidas realizaram uma transferência. Contudo, a implementação percorre a tabela
+de índices sequencialmente; por isso, o número médio de comparações aumentou de 16,
+com 100 registros, para 253.576, com 2.000.000 de registros. Uma busca binária no
+índice poderia reduzir esse custo de $O(N)$ para $O(\log N)$ sem aumentar a quantidade
+de páginas lidas. Além disso, o método exige um arquivo ordenado ascendentemente e é
+pouco adequado a conjuntos muito dinâmicos, nos quais inserções e remoções frequentes
+podem exigir reorganização do arquivo e reconstrução do índice.
+
+Já a Árvore Binária de Pesquisa confirmou o que a teoria já avisava: ela não foi feita
+para lidar com memória secundária. Como cada nó guarda um único registro e é lido
+direto do arquivo, toda visita a um nó custa uma transferência, e sem nenhum mecanismo
+de balanceamento o número de leituras e comparações vai às alturas. Para piorar, quando
+o arquivo está ordenado, a árvore se degenera e vira basicamente uma lista encadeada.
+Isso até nos impediu de rodar os testes com arquivos ordenados acima de
+\textit{10.000} registros, deixando claro que não dá para contar com ela para grandes
+volumes de dados.
+
+Em contrapartida, a Árvore B e a Árvore B* entregaram tudo o que prometeram. Por serem
+sempre balanceadas, elas lidaram bem com arquivos em todas as ordens (crescente,
+decrescente e aleatória), e o número de comparações na pesquisa cresceu bem devagar,
+de forma logarítmica, mesmo com o aumento da quantidade de registros. O segredo é o
+agrupamento de várias chaves em cada página, o que mantém a árvore bem ``baixa''. Como
+neste trabalho as duas ficam na memória principal funcionando como índice, encontrar
+uma chave custou apenas uma leitura no disco, para buscar o registro completo no
+arquivo. O preço a pagar fica no pré-processamento, já que todos os registros precisam
+ser lidos e inseridos na árvore antes da primeira pesquisa.
+
+Para fechar, vale reconhecer que a Árvore B* dá bem mais trabalho para ser
+implementada. Lidar com a redistribuição de registros entre folhas irmãs e com a
+divisão de duas folhas em três exige bastante cuidado. Mesmo assim, o esforço compensa,
+porque as folhas ficam mais cheias e menos páginas são criadas. No fim das contas,
+tanto a Árvore B quanto a B* tiveram o desempenho mais estável entre os métodos,
+mostrando que apostar em estruturas multicaminho balanceadas é o caminho certo para
+manipular grandes volumes de dados com eficiência.
+\end{document}

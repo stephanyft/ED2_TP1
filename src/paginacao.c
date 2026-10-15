@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-int criaTabelaIndices(FILE *arquivo, Indice **tabela, int *tamanhoTabela, AnaliseExperimental *metricas) {
+int criaTabelaIndices(FILE *arquivo, Indice **tabela, int *tamanhoTabela, AnaliseExperimental *metricasCriacao) {
     if (arquivo == NULL || tabela == NULL || tamanhoTabela == NULL ||
-        metricas == NULL) {
+        metricasCriacao == NULL) {
         return 0;
     }
 
@@ -15,7 +15,8 @@ int criaTabelaIndices(FILE *arquivo, Indice **tabela, int *tamanhoTabela, Analis
 
     // Posiciona no final para descobrir o tamanho do arquivo. 
     if (fseek(arquivo, 0, SEEK_END) != 0) {
-        metricas->tempoExecucao = (clock() - inicio) / CLOCKS_PER_SEC;
+        metricasCriacao->tempoExecucao =
+            (double)(clock() - inicio) / CLOCKS_PER_SEC;
         return 0;
     }
 
@@ -30,14 +31,16 @@ int criaTabelaIndices(FILE *arquivo, Indice **tabela, int *tamanhoTabela, Analis
 
     // Arquivo vazio é válido e produz uma tabela vazia. 
     if (quantidadePaginas == 0) {
-        metricas->tempoExecucao = (clock() - inicio) / CLOCKS_PER_SEC;
+        metricasCriacao->tempoExecucao =
+            (double)(clock() - inicio) / CLOCKS_PER_SEC;
         return 1;
     }
 
     // Reserva uma entrada em memória principal para cada página do arquivo. 
     Indice *novaTabela = malloc(quantidadePaginas * sizeof(*novaTabela));
     if (novaTabela == NULL) {
-        metricas->tempoExecucao = (clock() - inicio) / CLOCKS_PER_SEC;
+        metricasCriacao->tempoExecucao =
+            (double)(clock() - inicio) / CLOCKS_PER_SEC;
         return 0;
     }
 
@@ -51,7 +54,7 @@ int criaTabelaIndices(FILE *arquivo, Indice **tabela, int *tamanhoTabela, Analis
         }
 
         // Cada leitura do arquivo conta como uma transferência externa. 
-        metricas->numTransferencias++;
+        metricasCriacao->numTransferencias++;
     
         // Guarda a chave inicial e a posição lógica do começo da página. 
         novaTabela[paginaAtual].chave = primeiroItem.chave;
@@ -67,14 +70,15 @@ int criaTabelaIndices(FILE *arquivo, Indice **tabela, int *tamanhoTabela, Analis
     // Uma falha de leitura ou uma tabela incompleta invalida a construção.
     if (ferror(arquivo) || paginaAtual != quantidadePaginas) {
         free(novaTabela);
-        metricas->tempoExecucao = (clock() - inicio) / CLOCKS_PER_SEC;
+        metricasCriacao->tempoExecucao =
+            (double)(clock() - inicio) / CLOCKS_PER_SEC;
         return 0;
     }
 
     // Entrega a tabela alocada e seu tamanho para a função chamadora.
     *tabela = novaTabela;
     *tamanhoTabela = paginaAtual;
-    metricas->tempoExecucao = (double)(clock() - inicio) / CLOCKS_PER_SEC;
+    metricasCriacao->tempoExecucao = (double)(clock() - inicio) / CLOCKS_PER_SEC;
     return 1;
 }
 
@@ -109,7 +113,8 @@ int pesquisaSequencialIndexada(FILE *arquivo, const Indice tabela[], int tamanho
     // Converte a posição lógica do registro em deslocamento de bytes. 
     long deslocamento = tabela[paginaEscolhida].primeiroRegistro * sizeof(Item);
     if (fseek(arquivo, deslocamento, SEEK_SET) != 0) {
-        metricas->tempoExecucao = (clock() - inicio) / CLOCKS_PER_SEC;
+        metricas->tempoExecucao =
+            (double)(clock() - inicio) / CLOCKS_PER_SEC;
         return 0;
     }
 
@@ -118,7 +123,8 @@ int pesquisaSequencialIndexada(FILE *arquivo, const Indice tabela[], int tamanho
     long int quantidadeLida = fread(pagina, sizeof(Item), ITENS_POR_PAGINA, arquivo);
 
     if (quantidadeLida == 0) {
-        metricas->tempoExecucao = (clock() - inicio) / CLOCKS_PER_SEC;
+        metricas->tempoExecucao =
+            (double)(clock() - inicio) / CLOCKS_PER_SEC;
         return 0;
     }
 
@@ -131,7 +137,8 @@ int pesquisaSequencialIndexada(FILE *arquivo, const Indice tabela[], int tamanho
         if (pagina[j].chave == chave) {
             // Devolve ao chamador uma cópia completa do registro encontrado. 
             *resultado = pagina[j];
-            metricas->tempoExecucao = (clock() - inicio) / CLOCKS_PER_SEC;
+            metricas->tempoExecucao =
+                (double)(clock() - inicio) / CLOCKS_PER_SEC;
             return 1;
         }
     }
@@ -142,7 +149,16 @@ int pesquisaSequencialIndexada(FILE *arquivo, const Indice tabela[], int tamanho
 
 // Coordena a criação do índice, a pesquisa e a apresentação dos resultados. 
 void executarMetodo1(int quantidade, int situacao, int chaveBusca, int imprimir, const char *nomeArquivo, AnaliseExperimental *metricas) {
-    // A quantidade já foi usada para gerar o arquivo no programa principal. 
+    if (metricas == NULL) {
+        return;
+    }
+
+    // A quantidade já foi usada para gerar o arquivo no programa principal.
+    (void)quantidade;
+
+    // As etapas de criação e pesquisa mantêm métricas independentes.
+    AnaliseExperimental metricasCriacao = {0};
+    *metricas = (AnaliseExperimental){0};
 
     // O método depende da ordenação crescente das chaves. 
     if (situacao != 1) {
@@ -161,7 +177,7 @@ void executarMetodo1(int quantidade, int situacao, int chaveBusca, int imprimir,
     int tamanhoTabela = 0;
 
     // O endereço de tabela é passado para que a função possa alocá-la. 
-    if (!criaTabelaIndices(arquivo, &tabela, &tamanhoTabela, &metricas)) {
+    if (!criaTabelaIndices(arquivo, &tabela, &tamanhoTabela, &metricasCriacao)) {
         printf("Erro ao construir a tabela de indices.\n");
         fclose(arquivo);
         return;
@@ -179,6 +195,22 @@ void executarMetodo1(int quantidade, int situacao, int chaveBusca, int imprimir,
     } else {
         printf("Chave %d nao encontrada.\n", chaveBusca);
     }
+
+    printf("\n--- METRICAS DE DESEMPENHO DE CRIACAO ---\n");
+    printf("Numero de transferencias da criacao: %d\n",
+           metricasCriacao.numTransferencias);
+    printf("Numero de comparacoes da criacao: %d\n",
+           metricasCriacao.numComparacoes);
+    printf("Tempo de execucao da criacao: %.6f segundos\n",
+           metricasCriacao.tempoExecucao);
+
+    printf("\n--- METRICAS DE DESEMPENHO DE PESQUISA ---\n");
+    printf("Numero de transferencias da pesquisa: %d\n",
+           metricas->numTransferencias);
+    printf("Numero de comparacoes da pesquisa: %d\n",
+           metricas->numComparacoes);
+    printf("Tempo de execucao da pesquisa: %.6f segundos\n",
+           metricas->tempoExecucao);
 
     if (imprimir) {
         // A opção -P apresenta somente as chaves existentes no arquivo. 
