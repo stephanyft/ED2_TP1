@@ -97,12 +97,13 @@ void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRe
     else{
         InsereNaPagina(ApTemp, *RegRetorno, *ApRetorno, metricas);
     }
-    for(j = M + 2; j <= MM; j++)
+    for(j = M + 2; j <= MM; j++){
         InsereNaPagina(ApTemp, Ap->r[j - 1], Ap->p[j], metricas);
         Ap->n = M;
         ApTemp->p[0] = Ap->p[M + 1];
         *RegRetorno = Ap->r[M];
-        *ApRetorno = ApTemp;       
+        *ApRetorno = ApTemp;
+    }   
 }
 
 void Imprime(TipoApontador arvore) {
