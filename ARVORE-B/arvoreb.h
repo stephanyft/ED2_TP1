@@ -8,8 +8,10 @@
 #define TRUE 1
 #define FALSE 0
 
+// Define o tipo da chave de pesquisa //
 typedef int TipoChave;
 
+// Estrutura do item indexado na memoria principal //
 typedef struct TipoRegistro {
     TipoChave Chave;
     long posicaoNoArquivo;
@@ -17,6 +19,7 @@ typedef struct TipoRegistro {
 
 typedef struct TipoPagina* TipoApontador;
 
+// Estrutura de uma pagina (no) da Arvore B. //
 typedef struct TipoPagina {
     short n;
     TipoRegistro r[MM];

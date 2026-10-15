@@ -8,21 +8,27 @@
 
 void inicializa(TipoApontador* Arvore) {
     *Arvore = NULL;
-}
+} /* Procura a chave de x na árvore B a partir da página Ap.
+   Retorna 1 e copia o registro para x se encontrar; senão retorna 0. */
 int Pesquisa(TipoRegistro *x, TipoApontador Ap, AnaliseExperimental *metricas) {
     long i = 1;
+    
+    /* Página vazia: a chave não está na árvore */
     if(Ap == NULL){
         return 0;
     }
+    /* Avança na página enquanto a chave procurada for maior */
     while(i < Ap->n && x->Chave > Ap->r[i-1].Chave){ 
         i++;
         metricas->numComparacoes++;
     }
     metricas->numComparacoes++;
+    /* Achou a chave: copia o registro */
     if(x->Chave == Ap->r[i-1].Chave){
         *x = Ap->r[i-1];
         return 1;
     }
+    /* Não achou: desce para o filho da esquerda ou da direita */
     if(x->Chave < Ap->r[i - 1].Chave){
         return Pesquisa(x, Ap->p[i - 1], metricas);
     }
@@ -30,60 +36,75 @@ int Pesquisa(TipoRegistro *x, TipoApontador Ap, AnaliseExperimental *metricas) {
         return Pesquisa(x, Ap->p[i], metricas);
     }
 }
-
+// insere o registro reg na arvore b, cujo o registro *ap//
+// se a raiz se dividir cria uma nova raiz e a arvore sempre cresce lembrando que sempre pra cima//
 void Insere(TipoRegistro Reg, TipoApontador* Ap, AnaliseExperimental *metricas) {
     short Cresceu;
     TipoRegistro RegRetorno;
     TipoPagina *ApRetorno, *ApTemp;
+    // faz a iserção descendo pela arvore//
     Ins (Reg, *Ap, &Cresceu, &RegRetorno, &ApRetorno, metricas);
+    // a raiz se dividiu cria uma nova raiz, com o registro que subiu//
     if(Cresceu) {
         ApTemp = (TipoPagina *)malloc((sizeof(TipoPagina)));
         ApTemp->n = 1;
-        ApTemp->r[0] = RegRetorno;
-        ApTemp->p[1] = ApRetorno;
-        ApTemp->p[0] = *Ap;
-        *Ap = ApTemp;
+        ApTemp->r[0] = RegRetorno; 
+        ApTemp->p[1] = ApRetorno; // filho direito: nova pagina da divisao//
+        ApTemp->p[0] = *Ap; // filho esquerdo: raiz antiga// 
+        *Ap = ApTemp; // a nova pagina passa a ser a raiz//
     }
 
 }
 
+// Função recursiva que localiza a página folha para a inserção e realiza o split //
 void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRetorno, TipoApontador *ApRetorno, AnaliseExperimental *metricas){
     
     long i = 1;
     long j;
     TipoApontador ApTemp;
+
+    // Se a página atual for nula, o item é inserido na página pai //
     if (Ap == NULL) {
         *Cresceu = TRUE;
         *RegRetorno  = Reg;
         *ApRetorno = NULL;
         return;
     }
+    // Encontra a subárvore correta para descer //
     while (i < Ap->n){
         metricas->numComparacoes++;
-        if (Reg.Chave > Ap->r[i - 1].Chave) 
+        if (Reg.Chave > Ap->r[i - 1].Chave){
             i++;
-        else
+        }
+        else{
             break;
+        }
     }
     metricas->numComparacoes++;
+    // Evita chaves duplicadas //
     if (Reg.Chave == Ap->r[i - 1].Chave){
         printf("Erro: Registro ja esta presente\n");
         *Cresceu = FALSE;
         return;
     }
     metricas->numComparacoes++;
-    if(Reg.Chave < Ap->r[i - 1].Chave)
+    if(Reg.Chave < Ap->r[i - 1].Chave){
         i--;
+    }
+    // Descida recursiva // 
     Ins(Reg, Ap->p[i], Cresceu, RegRetorno, ApRetorno, metricas);
-
-    if(!*Cresceu)
+    // Se não houve split encerra //
+    if(!*Cresceu){
         return;
+    }
     metricas->numComparacoes++;
+    // Se a página atual tiver espaço, insere o registro e encerra //
     if(Ap->n < MM) {
         InsereNaPagina(Ap, *RegRetorno, *ApRetorno, metricas);
         *Cresceu = FALSE;
         return;
     }
+    // Se a página atual estiver cheia, realiza o split //
     ApTemp = (TipoApontador)malloc(sizeof(TipoPagina));
     ApTemp->n = 0;
     ApTemp->p[0] = NULL;
@@ -97,6 +118,7 @@ void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRe
     else{
         InsereNaPagina(ApTemp, *RegRetorno, *ApRetorno, metricas);
     }
+    // Copia os registros da página cheia para a nova página //
     for(j = M + 2; j <= MM; j++){
         InsereNaPagina(ApTemp, Ap->r[j - 1], Ap->p[j], metricas);
         Ap->n = M;
@@ -106,6 +128,7 @@ void Ins(TipoRegistro Reg, TipoApontador Ap, short *Cresceu, TipoRegistro *RegRe
     }   
 }
 
+// Função para imprimir a árvore B em ordem //
 void Imprime(TipoApontador arvore) {
     int i = 0;
 
@@ -118,7 +141,8 @@ void Imprime(TipoApontador arvore) {
         i++;
     }
 }
-    
+
+// Função para inserir um registro em uma página da árvore B //
 void InsereNaPagina(TipoApontador Ap, TipoRegistro Reg, TipoApontador ApDir, AnaliseExperimental *metricas) {
     short NaoAchouPosicao;
     int k;
@@ -140,6 +164,8 @@ void InsereNaPagina(TipoApontador Ap, TipoRegistro Reg, TipoApontador ApDir, Ana
     Ap->p[k+1] = ApDir;
     Ap->n++;
 }
+
+// Função para criar a árvore B a partir de um arquivo de registros //
 void CriaArvore(FILE * arq, TipoApontador *arvore, AnaliseExperimental *analise) {
     clock_t inicio, fim;
     inicio = clock();
@@ -151,6 +177,7 @@ void CriaArvore(FILE * arq, TipoApontador *arvore, AnaliseExperimental *analise)
     inicializa(arvore);
     rewind(arq);
 
+    // Lê os registros do arquivo e insere na árvore B //
     while(fread(&reg, sizeof(Item), 1, arq) == 1) {
         analise->numTransferencias++; 
         itemIndice.Chave = reg.chave;
@@ -164,6 +191,7 @@ void CriaArvore(FILE * arq, TipoApontador *arvore, AnaliseExperimental *analise)
     analise->tempoExecucao = ((double)(fim - inicio)) / CLOCKS_PER_SEC;
 }
 
+// Função para criar a árvore B e realiza a pesquisa de uma chave específica a partir da entrada no terminal //
 void executarMetodo3(int quantidade, int situacao, int chaveBusca, int imprimir, const char *nomeArquivo, AnaliseExperimental *analise) {
     FILE *arq = fopen(nomeArquivo, "rb");
     if(arq == NULL) {
