@@ -8,46 +8,54 @@
 #else
 #define FSEEK64(f, o, w) fseeko((f), (off_t)(o), (w))
 #endif
-
+/*Constroi  o indice da arvore B* a partir dos registros armazenados no 
+* arquivo binario
+*/
 void CriaArvoreB_estrela(FILE *arq, TipoApontadorE *raiz, AnaliseExperimental *analise) {
-    if (arq == NULL || raiz == NULL || analise == NULL) {
+    if (arq == NULL || raiz == NULL || analise == NULL) { /*Verifica se os parametros necessarios foram fornecidos.*/
         return;
     }
 
-    clock_t inicio = clock();
-
-    rewind(arq);
+    clock_t inicio = clock(); /*Inicia a medição do tempo de construção*/
+    /*Volta ao inicio do arquivo e inicializa a arvore como vazia */
+    rewind(arq); 
     *raiz = NULL;
 
-    Item registro;
+    Item registro; /*Variavel que armazena a posição logica de cada registro no arquivo*/
     long posicao = 0;
-
+    /*Le cada registro ate chegar ao fim do arquivo.
+    *Cada leitura bem-sucedida incrementa o contador de transferencias
+    */
     while (fread(&registro, sizeof(Item), 1, arq) == 1) {
         analise->numTransferencias++;
 
+        /* Cria a entrada do indice com a chave do registro
+        * e a posicao em que o registro foi encontrado no arquivo.
+        */
         RegistroIndiceBEstrela indice;
         indice.chave = registro.chave;
         indice.posicaoNoArquivo = posicao;
 
-        InsereArvoreB_estrela(raiz, indice, analise);
+        InsereArvoreB_estrela(raiz, indice, analise); /*Insere a entrada no indice da arvore*/
 
         posicao++;
     }
 
-    analise->tempoExecucao += (double)(clock() - inicio) / CLOCKS_PER_SEC;
+    analise->tempoExecucao += (double)(clock() - inicio) / CLOCKS_PER_SEC; /*Acumula o tempo gasto na construção do indice*/
 }
 
 //Insere um registro de índice ordenadamente em uma página externa que ainda possui espaço.
 int inserePaginaExterna( TipoPaginaE *pagina, RegistroIndiceBEstrela *item,AnaliseExperimental *analise){
-    if (pagina == NULL || item == NULL ||
+    if (pagina == NULL || item == NULL ||  /*Verifica se os ponteiros recebidos são validos e se a pagina é externa*/
         pagina->Pt != Externa) {
         return 0;
     }
 
-    int n = pagina->UU.U1.ne;
+    int n = pagina->UU.U1.ne;  /*Guarda a quantidade atual de registros*/
     int i = 0;
 
-    if (n < 0 || n >= MM) {
+    if (n < 0 || n >= MM) { /*Verifica se a quantidade de registros esta dentro dos limites
+        */
         return 0;
     }
 
@@ -56,7 +64,7 @@ int inserePaginaExterna( TipoPaginaE *pagina, RegistroIndiceBEstrela *item,Anali
         if (analise != NULL) {
             analise->numComparacoes++;
         }
-
+        /* Procura a primeira posicao cuja chave seja maior ou igual a chave que sera inserida.*/
         if (pagina->UU.U1.re[i].chave >= item->chave) {
             break;
         }
@@ -68,13 +76,13 @@ int inserePaginaExterna( TipoPaginaE *pagina, RegistroIndiceBEstrela *item,Anali
         if (analise != NULL) {
             analise->numComparacoes++;
         }
-
-        if (pagina->UU.U1.re[i].chave == item->chave) {
+         /*Verifica se a chave encontrada ja existe na pagina*/
+        if (pagina->UU.U1.re[i].chave == item->chave) { 
             return 0;
         }
     }
 
-    //Desloca os registros para abrir espaço.
+    //Desloca os registros para a direita para abrir espaço.
     for (int j = n; j > i; j--) {
         pagina->UU.U1.re[j] =
             pagina->UU.U1.re[j - 1];
@@ -90,8 +98,9 @@ int inserePaginaExterna( TipoPaginaE *pagina, RegistroIndiceBEstrela *item,Anali
 int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresceu, int *chaveRetorno, TipoApontadorE *apontadorRetorno, AnaliseExperimental *analise){
     if (pagina == NULL || cresceu == NULL || chaveRetorno == NULL || apontadorRetorno == NULL) {
         return -1;
-    }
+    } /*Valida os parametros usados para realizar a inserção e devolver as informações de uma possivel divisao*/
 
+    /*Inicialização dos ponteiros*/
     *cresceu = 0;
     *apontadorRetorno = NULL;
 
@@ -99,7 +108,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
     if (pagina->Pt == Externa) {
         int n = pagina->UU.U1.ne;
 
-        if (n < 0 || n > MM) {
+        if (n < 0 || n > MM) { /*Verifica se ha espaco para inserir o novo indice.*/
             return -1;
         }
 
@@ -137,7 +146,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
 
         //Reúne os MM registros existentes e o novo
         RegistroIndiceBEstrela temporarios[MM + 1];
-
+        /*Copia os registros anteriores a posição de inserção*/
         for (int j = 0; j < i; j++) {
             temporarios[j] = pagina->UU.U1.re[j];
         }
@@ -147,7 +156,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
         for (int j = i; j < n; j++) {
             temporarios[j + 1] = pagina->UU.U1.re[j];
         }
-
+        /*Aloca nova pagina externa para receber parte dos registros durante a divisão*/
         TipoApontadorE direita = calloc(1, sizeof(TipoPaginaE));
 
         if (direita == NULL) {
@@ -156,11 +165,12 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
 
         direita->Pt = Externa;
 
-        //Divisão convencional em duas folhas
+        //Divisão convencional em duas folhas para definir a quantidade de registros
         int quantidadeEsquerda = (MM + 1) / 2;
 
         pagina->UU.U1.ne = quantidadeEsquerda;
 
+        /*Distribui os reistros entre a pagina original e a nova*/
         for (int j = 0; j < quantidadeEsquerda; j++) {
             pagina->UU.U1.re[j] = temporarios[j];
         }
@@ -175,7 +185,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
         // A primeira chave da folha direita separa os dois lados.
         *chaveRetorno = direita->UU.U1.re[0].chave;
         *apontadorRetorno = direita;
-        *cresceu = 1;
+        *cresceu = 1; //informa se houve divisão
 
         return 1;
     }
@@ -187,7 +197,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
 
     int i = 0;
     int n = pagina->UU.U0.ni;
-
+    /* Encontra o intervalo correspondente a chave que sera inserida.*/
     while (i < n) {
         if (analise != NULL) {
             analise->numComparacoes++;
@@ -200,27 +210,28 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
         }
     }
 
-    if (pagina->UU.U0.pi[i] == NULL) {
+    if (pagina->UU.U0.pi[i] == NULL) { /*Verifica se o ponteiro para o filho escolhido existe.*/
         return -1;
     }
-
     int cresceuFilho = 0;
     int chaveFilho = 0;
     TipoApontadorE novaPaginaFilho = NULL;
 
+    /*Inserção na pagina escohida por meio da função recursiva*/
     int resultado = insRecEstrela(pagina->UU.U0.pi[i], item, &cresceuFilho, &chaveFilho, &novaPaginaFilho, analise);
 
+    //Se o filho não se dividiu, não há chave a propagar
     if (resultado != 1) {
         return resultado;
     }
 
-    //Se o filho não se dividiu, não há chave a propagar
     if (!cresceuFilho) {
         return 1;
     }
 
     //O filho se dividiu e a página interna ainda tem espaço
     if (n < MM) {
+        /*Desloca as separadoras e os ponteiros para abrir espaco*/
         for (int j = n; j > i; j--) {
             pagina->UU.U0.ri[j] = pagina->UU.U0.ri[j - 1];
         }
@@ -228,7 +239,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
         for (int j = n + 1; j > i + 1; j--) {
             pagina->UU.U0.pi[j] = pagina->UU.U0.pi[j - 1];
         }
-
+        /*nsere a chave separadora devolvida pelo filho e associa a ela o ponteiro para a nova pagina da direita.*/
         pagina->UU.U0.ri[i] = chaveFilho;
         pagina->UU.U0.pi[i + 1] = novaPaginaFilho;
         pagina->UU.U0.ni++;
@@ -239,7 +250,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
     //Página interna cheia: prepara as chaves e os filhos temporários
     int chaves[MM + 1];
     TipoApontadorE filhos[MM + 2];
-
+    /*Copia as chaves e ponteiros para vetores temporarios*/
     for (int j = 0; j < n; j++) {
         chaves[j] = pagina->UU.U0.ri[j];
     }
@@ -255,7 +266,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
     for (int j = n + 1; j > i + 1; j--) {
         filhos[j] = filhos[j - 1];
     }
-
+    /*Nova separadora e novo ponteiro para a pagina criada*/
     chaves[i] = chaveFilho;
     filhos[i + 1] = novaPaginaFilho;
 
@@ -267,7 +278,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
     }
 
     direita->Pt = Interna;
-
+    /* Define a posicao da chave que sera promovida ao nivel superior. */
     int meio = (MM + 1) / 2;
 
     //Promove a chave central para a página pai
@@ -275,6 +286,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
 
     pagina->UU.U0.ni = meio;
 
+    /*Distribui as chaves e os ponteiros entre a pagina original e a nova pagina interna*/
     for (int j = 0; j < meio; j++) {
         pagina->UU.U0.ri[j] = chaves[j];
     }
@@ -296,31 +308,31 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
     }
 
     *apontadorRetorno = direita;
-    *cresceu = 1;
+    *cresceu = 1; 
 
     return 1;
 }
 
-
+/*Inicia a incerção de uma entrada na arvore B* */
 void InsereArvoreB_estrela(TipoApontadorE *raiz, RegistroIndiceBEstrela item, AnaliseExperimental *analise) {
-    if (raiz == NULL || analise == NULL) {
+    if (raiz == NULL || analise == NULL) { /*Verifica se os parametros são validos*/
         return;
     }
 
     /* Caso 1: árvore vazia. */
     if (*raiz == NULL) {
-        TipoApontadorE novaPagina =
-            calloc(1, sizeof(TipoPaginaE));
+         /*Cria a primeira pagina externa e aloca memoria para ela*/
+        TipoApontadorE novaPagina = calloc(1, sizeof(TipoPaginaE));
 
-        if (novaPagina == NULL) {
+        if (novaPagina == NULL) { /*Verifica se a pagina foi criada*/
             return;
         }
-
+        /*Define a pagina como externa e registra a primeira entrada*/
         novaPagina->Pt = Externa;
         novaPagina->UU.U1.ne = 1;
         novaPagina->UU.U1.re[0] = item;
 
-        *raiz = novaPagina;
+        *raiz = novaPagina; /*Atualiza a raiz*/
         return;
     }
 
@@ -328,7 +340,7 @@ void InsereArvoreB_estrela(TipoApontadorE *raiz, RegistroIndiceBEstrela item, An
     int cresceu = 0;
     int chaveRetorno = 0;
     TipoApontadorE apontadorRetorno = NULL;
-
+    /*Inicializa a inserção recursiva*/
     int resultado = insRecEstrela(*raiz, item, &cresceu, &chaveRetorno, &apontadorRetorno, analise);
 
     //A inserção falhou ou a chave já existia
@@ -341,8 +353,8 @@ void InsereArvoreB_estrela(TipoApontadorE *raiz, RegistroIndiceBEstrela item, An
         return;
     }
 
-    /* Caso 3: a raiz se dividiu. Cria uma nova raiz interna com a chave separadora e os ponteiros para as páginas esquerda e direita.
-    */
+    /* Caso 3: a raiz se dividiu.*/
+    /* Cria uma nova raiz interna */
     TipoApontadorE novaRaiz = calloc(1, sizeof(TipoPaginaE));
 
     if (novaRaiz == NULL) {
@@ -350,6 +362,7 @@ void InsereArvoreB_estrela(TipoApontadorE *raiz, RegistroIndiceBEstrela item, An
         return;
     }
 
+    /* A nova raiz recebe a chave separadora e os ponteiros para as paginas esquerda e direita.*/
     novaRaiz->Pt = Interna;
     novaRaiz->UU.U0.ni = 1;
 
@@ -365,17 +378,17 @@ void printArvoreEstrelaRec(TipoApontadorE raiz, int nivel) {
     if (raiz == NULL) {
         return;
     }
-
+    /* Adiciona espacos de indentacao conforme o nivel da pagina*/
     for (int j = 0; j < nivel; j++) {
         printf("  ");
     }
-
+    /* Verifica se a pagina atual e externa. */
     if (raiz->Pt == Externa) {
         printf("Folha: ");
-
+         /* Imprime as chaves armazenadas na pagina externa. */
         for (int i = 0; i < raiz->UU.U1.ne; i++) {
             printf("%d", raiz->UU.U1.re[i].chave);
-
+            /* Imprime virgula somente entre as chaves. */
             if (i + 1 < raiz->UU.U1.ne) {
                 printf(", ");
             }
@@ -384,7 +397,7 @@ void printArvoreEstrelaRec(TipoApontadorE raiz, int nivel) {
         printf("\n");
         return;
     }
-
+    /* Se nao for externa, imprime as chaves separadoras armazenadas na pagina interna*/
     printf("Interna: ");
 
     for (int i = 0; i < raiz->UU.U0.ni; i++) {
@@ -396,7 +409,7 @@ void printArvoreEstrelaRec(TipoApontadorE raiz, int nivel) {
     }
 
     printf("\n");
-
+    /*Percorre recursivamente todos os filhos da pagina interna*/
     for (int i = 0; i <= raiz->UU.U0.ni; i++) {
         printArvoreEstrelaRec(
             raiz->UU.U0.pi[i],
@@ -408,38 +421,40 @@ void printArvoreEstrelaRec(TipoApontadorE raiz, int nivel) {
 
 //Função de entrada para imprimir a árvore
 void printArvoreB_estrela(TipoApontadorE raiz) {
-    if (raiz == NULL) {
+    if (raiz == NULL) { /*Verifica se a arvore esta vazia*/
         printf("Arvore vazia.\n");
         return;
     }
-
+    /*Inicia a impressão recursiva*/
     printArvoreEstrelaRec(raiz, 0);
 }
-
+/* Realiza a pesquisa recursiva de uma chave na arvore B*.*/
 int PesquisaRecEstrela( TipoApontadorE ap, int chave, RegistroIndiceBEstrela *indice, AnaliseExperimental *analise) {
     int i = 0;
 
-    if (ap == NULL) {
+    if (ap == NULL) { /*Verifica se existe paginas no caminho*/
         return 0;
     }
 
     /* Pesquisa na página interna */
     if (ap->Pt == Interna) {
-
-        while (i < ap->UU.U0.ni) {
+        while (i < ap->UU.U0.ni) { /*Percorre as chaves separadoras para descobrir qual filho deve se seguir*/
             analise->numComparacoes++;
+             /* Se a chave pesquisada for maior ou igual a separadora,
+             * avanca para o proximo intervalo.
+             * Quando as chaves sao iguais, segue pelo ponteiro a direita*/
             if (chave >= ap->UU.U0.ri[i]) {
                 i++;
             } else {
                 break;
             }
         }
-
+        /*Continua a pesquisa recursivamente*/
         return PesquisaRecEstrela( ap->UU.U0.pi[i], chave, indice, analise);
     }
 
     /* Pesquisa na página externa */
-    while (i < ap->UU.U1.ne) {
+    while (i < ap->UU.U1.ne) { /*Percorre os indices*/
         analise->numComparacoes++;
         if (chave > ap->UU.U1.re[i].chave) {
             i++;
@@ -448,28 +463,29 @@ int PesquisaRecEstrela( TipoApontadorE ap, int chave, RegistroIndiceBEstrela *in
         }
     }
 
-    if (i < ap->UU.U1.ne) {
+    if (i < ap->UU.U1.ne) { /*Verifica se a posição encontrada esra dentro dos limites*/
         analise->numComparacoes++;
-        if (chave == ap->UU.U1.re[i].chave) {
-            *indice = ap->UU.U1.re[i];
+        if (chave == ap->UU.U1.re[i].chave) { /*Indice encontrado*/
+            *indice = ap->UU.U1.re[i];  /*Copia a encontrada para a variavel recebida*/
             return 1;
         }
     }
 
     return 0;
 }
-
+/*Realiza a pesquisa completa de um registro na arvore*/
 int PesquisarChaveB_estrela(TipoApontadorE raiz, FILE *arq, int chave, Item *resultado, AnaliseExperimental *analise) {
+   /*Registra o instante inicial*/
     clock_t inicio = clock();
     RegistroIndiceBEstrela indice;
     int encontrado = 0;
 
-    if (arq == NULL || resultado == NULL || analise == NULL) {
+    if (arq == NULL || resultado == NULL || analise == NULL) { 
         return 0;
     }
-
+    /*Pesquisa recursiva da chave no indice da arvore*/
     encontrado = PesquisaRecEstrela(raiz,chave,&indice,analise);
-
+    /* Se a chave nao estiver no indice, encerra a pesquisa. Mesmo nesse caso, registra o tempo gasto.*/
     if (!encontrado) {
         analise->tempoExecucao +=((double)(clock() - inicio)) / CLOCKS_PER_SEC;
         return 0;
@@ -480,24 +496,26 @@ int PesquisarChaveB_estrela(TipoApontadorE raiz, FILE *arq, int chave, Item *res
         analise->tempoExecucao +=((double)(clock() - inicio)) / CLOCKS_PER_SEC;
         return 0;
     }
+     /*Le um registro completo do arquivo e armazena seus dado sna estrutura apontada por resultado.*/
     if (fread(resultado, sizeof(Item), 1, arq) != 1) {
         analise->tempoExecucao +=((double)(clock() - inicio)) / CLOCKS_PER_SEC;
         return 0;
     }
     analise->numTransferencias++;
+    /*Registra o tempo casi a leitura não funcione*/
     analise->tempoExecucao += ((double)(clock() - inicio)) / CLOCKS_PER_SEC;
 
     return 1;
 }
-
+/*Libera a memoria da pagina*/
 void liberaArvoreB_estrela(TipoApontadorE raiz) {
     if (raiz == NULL) return;
     if (raiz->Pt == Interna){
         for (int i = 0; i <= raiz->UU.U0.ni; i++){
-            liberaArvoreB_estrela(raiz->UU.U0.pi[i]);
+            liberaArvoreB_estrela(raiz->UU.U0.pi[i]);/*Libera de forma recursiva*/
         }
     }
-    free(raiz);
+    free(raiz); /*Libera a raiz*/
 }
 
 // Guarda a arvore entre as 20 pesquisas do experimento
