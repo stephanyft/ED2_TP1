@@ -1,38 +1,62 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
 #include "paginacao.h"
 
-int main() {
-    FILE* arquivo = fopen("data.dat", "wb");
+#include <stdio.h>
+#include <stdlib.h>
 
-    if(arquivo == NULL) {
-        printf("Erro ao abrir arquivo\n");
-        return -1;
+/* Executavel auxiliar para testar o modulo isoladamente. */
+int main(int argc, char *argv[]) {
+    /* O teste isolado recebe o arquivo já criado e a chave desejada. */
+    if (argc != 3) {
+        printf("Uso: %s <arquivo-binario> <chave>\n", argv[0]);
+        return 1;
     }
 
-    fseek(arquivo, 0, SEEK_END);
-    long tamanhoArquivo = ftell(arquivo);
-    int tamanhoTabelaIndices = tamanhoArquivo / (sizeof(Registro)*TAM_PAGINA); 
+    char *fim = NULL;
+    long chaveLong = strtol(argv[2], &fim, 10);
 
-    Pagina pagina;
-    pagina.quantidade = 4;
+    /* strtol permite detectar entradas que não representam um número inteiro. */
+    if (*argv[2] == '\0' || *fim != '\0') {
+        printf("Erro: chave invalida.\n");
+        return 1;
+    }
 
-    pagina.registros[0].chave = 10;
-    strcpy(pagina.registros[0].nome, "Ana");
+    FILE *arquivo = fopen(argv[1], "rb");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo %s.\n", argv[1]);
+        return 1;
+    }
 
-    pagina.registros[1].chave = 20;
-    strcpy(pagina.registros[1].nome, "Bruno");
+    AnaliseExperimental criacao = {0, 0, 0.0};
+    AnaliseExperimental pesquisa = {0, 0, 0.0};
+    Indice *tabela = NULL;
+    int tamanhoTabela = 0;
 
-    pagina.registros[2].chave = 30;
-    strcpy(pagina.registros[2].nome, "Carlos");
+    /* Cria o índice em memória antes de iniciar a pesquisa. */
+    if (!criaTabelaIndices(arquivo, &tabela, &tamanhoTabela, &criacao)) {
+        printf("Erro ao construir a tabela de indices.\n");
+        fclose(arquivo);
+        return 1;
+    }
 
-    pagina.registros[3].chave = 40;
-    strcpy(pagina.registros[3].nome, "Daniel");
+    /* Pesquisa e apresenta o registro recuperado do arquivo, quando existir. */
+    Item resultado;
+    if (pesquisaSequencialIndexada(arquivo, tabela, tamanhoTabela,
+                                   (int)chaveLong, &resultado, &pesquisa)) {
+        printf("Registro encontrado: chave=%d, dado1=%ld, dado2=%.50s...\n",
+               resultado.chave, resultado.dado1, resultado.dado2);
+    } else {
+        printf("Chave %ld nao encontrada.\n", chaveLong);
+    }
 
-    fwrite(&pagina, sizeof(Pagina), 1, arquivo);
+    printf("Criacao: transferencias=%d, comparacoes=%d, tempo=%.5f s\n",
+           criacao.numTransferencias, criacao.numComparacoes,
+           criacao.tempoExecucao);
+    printf("Pesquisa: transferencias=%d, comparacoes=%d, tempo=%.5f s\n",
+           pesquisa.numTransferencias, pesquisa.numComparacoes,
+           pesquisa.tempoExecucao);
 
+    /* Libera os recursos adquiridos durante o teste. */
+    free(tabela);
     fclose(arquivo);
-
     return 0;
 }
