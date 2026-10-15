@@ -9,7 +9,7 @@ static void zerarMetricas(AnaliseExperimental *metricas) {
     metricas->tempoExecucao = 0.0;
 }
 
-int criaTabelaIndices(FILE *arquivo, Indice **tabela, int *tamanhoTabela,AnaliseExperimental *metricas) {
+int criaTabelaIndices(FILE *arquivo, Indice **tabela, int *tamanhoTabela, AnaliseExperimental *metricas) {
     if (arquivo == NULL || tabela == NULL || tamanhoTabela == NULL ||
         metricas == NULL) {
         return 0;
@@ -20,20 +20,14 @@ int criaTabelaIndices(FILE *arquivo, Indice **tabela, int *tamanhoTabela,Analise
     *tabela = NULL;
     *tamanhoTabela = 0;
 
-    /* Posiciona no final para descobrir quantos registros existem no arquivo. */
+    /* Posiciona no final para descobrir o tamanho do arquivo. */
     if (fseek(arquivo, 0, SEEK_END) != 0) {
-        metricas->tempoExecucao = (double)(clock() - inicio) / CLOCKS_PER_SEC;
+        metricas->tempoExecucao = (clock() - inicio) / CLOCKS_PER_SEC;
         return 0;
     }
 
     // pega o byte atual, como nesse caso o ponteiro vai estar no fim do arquivo, esse é o nosso tamanho em bytes do arquivo
     long tamanhoArquivo = ftell(arquivo);
-
-    /* Um arquivo válido deve conter apenas registros Item completos. */
-    if (tamanhoArquivo < 0 || tamanhoArquivo % (long)sizeof(Item) != 0) {
-        metricas->tempoExecucao = (double)(clock() - inicio) / CLOCKS_PER_SEC;
-        return 0;
-    }
 
     rewind(arquivo);
     long int quantidadeRegistros = tamanhoArquivo / sizeof(Item);
@@ -50,7 +44,7 @@ int criaTabelaIndices(FILE *arquivo, Indice **tabela, int *tamanhoTabela,Analise
     /* Reserva uma entrada em memória principal para cada página do arquivo. */
     Indice *novaTabela = malloc(quantidadePaginas * sizeof(*novaTabela));
     if (novaTabela == NULL) {
-        metricas->tempoExecucao = (double)(clock() - inicio) / CLOCKS_PER_SEC;
+        metricas->tempoExecucao = (clock() - inicio) / CLOCKS_PER_SEC;
         return 0;
     }
 
@@ -72,9 +66,7 @@ int criaTabelaIndices(FILE *arquivo, Indice **tabela, int *tamanhoTabela,Analise
         paginaAtual++;
 
         /*
-         * Pula os outros três registros sem lê-los. Na última página não é
-         * necessário saltar, pois ela pode possuir menos de quatro registros.
-         */
+         * Pula os outros três registros sem ler. Na última página não é ecessário saltar, pois ela pode possuir menos de quatro registros.*/
         if (paginaAtual < quantidadePaginas && fseek(arquivo, (ITENS_POR_PAGINA - 1) * sizeof(Item), SEEK_CUR) != 0) {
             break;
         }
@@ -107,10 +99,7 @@ int pesquisaSequencialIndexada(FILE *arquivo, const Indice tabela[], int tamanho
     clock_t inicio = clock();
     int i = 0;
 
-    /*
-     * Localiza a última página cuja primeira chave é menor ou igual à chave
-     * procurada. As comparações ocorrem em memória principal.
-     */
+    // executa enquanto a chave testada da tabela é menor que a chave procurada
     while (i < tamanhoTabela) {
         metricas->numComparacoes++;
         if (tabela[i].chave > chave) {
@@ -137,8 +126,7 @@ int pesquisaSequencialIndexada(FILE *arquivo, const Indice tabela[], int tamanho
 
     /* Carrega somente a página candidata; a última pode estar incompleta. */
     Item pagina[ITENS_POR_PAGINA];
-    size_t quantidadeLida =
-        fread(pagina, sizeof(Item), ITENS_POR_PAGINA, arquivo);
+    long int quantidadeLida = fread(pagina, sizeof(Item), ITENS_POR_PAGINA, arquivo);
 
     if (quantidadeLida == 0) {
         metricas->tempoExecucao = (clock() - inicio) / CLOCKS_PER_SEC;
@@ -149,13 +137,12 @@ int pesquisaSequencialIndexada(FILE *arquivo, const Indice tabela[], int tamanho
     metricas->numTransferencias++;
 
     /* Faz a busca sequencial entre os registros carregados da página. */
-    for (size_t j = 0; j < quantidadeLida; j++) {
+    for (int j = 0; j < quantidadeLida; j++) {
         metricas->numComparacoes++;
         if (pagina[j].chave == chave) {
             /* Devolve ao chamador uma cópia completa do registro encontrado. */
             *resultado = pagina[j];
-            metricas->tempoExecucao =
-                (double)(clock() - inicio) / CLOCKS_PER_SEC;
+            metricas->tempoExecucao = (clock() - inicio) / CLOCKS_PER_SEC;
             return 1;
         }
     }
@@ -175,7 +162,7 @@ static void imprimirMetricas(const char *etapa, const AnaliseExperimental *metri
 /* Coordena a criação do índice, a pesquisa e a apresentação dos resultados. */
 void executarMetodo1(int quantidade, int situacao, int chaveBusca, int imprimir, const char *nomeArquivo, AnaliseExperimental *metricas) {
     /* A quantidade já foi usada para gerar o arquivo no programa principal. */
-    (void)quantidade;
+    // (void)quantidade;
 
     /* O método depende da ordenação crescente das chaves. */
     if (situacao != 1) {
@@ -199,9 +186,7 @@ void executarMetodo1(int quantidade, int situacao, int chaveBusca, int imprimir,
     int tamanhoTabela = 0;
 
     /* O endereço de tabela é passado para que a função possa alocá-la. */
-    printf("\nConstruindo o indice esparso (Metodo 1)...\n");
-    if (!criaTabelaIndices(arquivo, &tabela, &tamanhoTabela,
-                           &metricasCriacao)) {
+    if (!criaTabelaIndices(arquivo, &tabela, &tamanhoTabela, &metricasCriacao)) {
         printf("Erro ao construir a tabela de indices.\n");
         fclose(arquivo);
         return;
@@ -209,8 +194,7 @@ void executarMetodo1(int quantidade, int situacao, int chaveBusca, int imprimir,
 
     printf("Pesquisando pela chave %d...\n", chaveBusca);
     Item resultado;
-    int encontrou = pesquisaSequencialIndexada(arquivo, tabela, tamanhoTabela,
-                                                chaveBusca, &resultado, metricas);
+    int encontrou = pesquisaSequencialIndexada(arquivo, tabela, tamanhoTabela, chaveBusca, &resultado,     metricas);
 
     if (encontrou) {
         printf("\n--- REGISTRO ENCONTRADO! ---\n");
