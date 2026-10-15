@@ -3,6 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#define FSEEK64(f, o, w) _fseeki64((f), (long long)(o), (w))
+#else
+#define FSEEK64(f, o, w) fseeko((f), (off_t)(o), (w))
+#endif
+
 void CriaArvoreB_estrela(FILE *arq, TipoApontadorE *raiz, AnaliseExperimental *analise) {
     if (arq == NULL || raiz == NULL || analise == NULL) {
         return;
@@ -28,35 +34,7 @@ void CriaArvoreB_estrela(FILE *arq, TipoApontadorE *raiz, AnaliseExperimental *a
         posicao++;
     }
 
-    analise->tempoExecucao +=
-        (double)(clock() - inicio) / CLOCKS_PER_SEC;
-}
-
-void InserePaginaInt(TipoPaginaE *pag, TipoApontadorE apontador, int ch){
-    /* Verifica se a página está cheia */
-    if (pag->UU.U0.ni >= MM) {
-        printf("Erro: página cheia!\n");
-        return;
-    }
-
-    int i = 0;
-    int j = 0;
-
-    while (i < pag->UU.U0.ni && ch > pag->UU.U0.ri[i])
-        i++; /* procura o local de inserção da chave */
-
-    for (j = pag->UU.U0.ni; j > i; j--) {
-        pag->UU.U0.ri[j] = pag->UU.U0.ri[j - 1];
-    }
-
-    pag->UU.U0.ri[i] = ch;
-
-    for (j = pag->UU.U0.ni; j > i; j--) {
-        pag->UU.U0.pi[j + 1] = pag->UU.U0.pi[j];
-    }
-
-    pag->UU.U0.pi[i + 1] = apontador;
-    pag->UU.U0.ni++;
+    analise->tempoExecucao += (double)(clock() - inicio) / CLOCKS_PER_SEC;
 }
 
 //Insere um registro de índice ordenadamente em uma página externa que ainda possui espaço.
@@ -110,8 +88,7 @@ int inserePaginaExterna( TipoPaginaE *pagina, RegistroIndiceBEstrela *item,Anali
 
 //Insere recursivamente. Quando uma página precisa ser dividida, retorna a chave separadora e o ponteiro para a nova página à direita.
 int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresceu, int *chaveRetorno, TipoApontadorE *apontadorRetorno, AnaliseExperimental *analise){
-    if (pagina == NULL || cresceu == NULL ||
-        chaveRetorno == NULL || apontadorRetorno == NULL) {
+    if (pagina == NULL || cresceu == NULL || chaveRetorno == NULL || apontadorRetorno == NULL) {
         return -1;
     }
 
@@ -171,8 +148,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
             temporarios[j + 1] = pagina->UU.U1.re[j];
         }
 
-        TipoApontadorE direita =
-            calloc(1, sizeof(TipoPaginaE));
+        TipoApontadorE direita = calloc(1, sizeof(TipoPaginaE));
 
         if (direita == NULL) {
             return -1;
@@ -189,8 +165,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
             pagina->UU.U1.re[j] = temporarios[j];
         }
 
-        direita->UU.U1.ne =
-            MM + 1 - quantidadeEsquerda;
+        direita->UU.U1.ne = MM + 1 - quantidadeEsquerda;
 
         for (int j = 0; j < direita->UU.U1.ne; j++) {
             direita->UU.U1.re[j] =
@@ -206,9 +181,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
     }
 
     /* Caso 2: página interna. Localiza o filho adequado. */
-    if (pagina->Pt != Interna ||
-        pagina->UU.U0.ni < 0 ||
-        pagina->UU.U0.ni > MM) {
+    if (pagina->Pt != Interna || pagina->UU.U0.ni < 0 || pagina->UU.U0.ni > MM) {
         return -1;
     }
 
@@ -235,14 +208,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
     int chaveFilho = 0;
     TipoApontadorE novaPaginaFilho = NULL;
 
-    int resultado = insRecEstrela(
-        pagina->UU.U0.pi[i],
-        item,
-        &cresceuFilho,
-        &chaveFilho,
-        &novaPaginaFilho,
-        analise
-    );
+    int resultado = insRecEstrela(pagina->UU.U0.pi[i], item, &cresceuFilho, &chaveFilho, &novaPaginaFilho, analise);
 
     if (resultado != 1) {
         return resultado;
@@ -256,13 +222,11 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
     //O filho se dividiu e a página interna ainda tem espaço
     if (n < MM) {
         for (int j = n; j > i; j--) {
-            pagina->UU.U0.ri[j] =
-                pagina->UU.U0.ri[j - 1];
+            pagina->UU.U0.ri[j] = pagina->UU.U0.ri[j - 1];
         }
 
         for (int j = n + 1; j > i + 1; j--) {
-            pagina->UU.U0.pi[j] =
-                pagina->UU.U0.pi[j - 1];
+            pagina->UU.U0.pi[j] = pagina->UU.U0.pi[j - 1];
         }
 
         pagina->UU.U0.ri[i] = chaveFilho;
@@ -295,8 +259,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
     chaves[i] = chaveFilho;
     filhos[i + 1] = novaPaginaFilho;
 
-    TipoApontadorE direita =
-        calloc(1, sizeof(TipoPaginaE));
+    TipoApontadorE direita = calloc(1, sizeof(TipoPaginaE));
 
     if (direita == NULL) {
         //A divisão do filho já ocorreu. O chamador precisa tratar esse erro
@@ -366,14 +329,7 @@ void InsereArvoreB_estrela(TipoApontadorE *raiz, RegistroIndiceBEstrela item, An
     int chaveRetorno = 0;
     TipoApontadorE apontadorRetorno = NULL;
 
-    int resultado = insRecEstrela(
-        *raiz,
-        item,
-        &cresceu,
-        &chaveRetorno,
-        &apontadorRetorno,
-        analise
-    );
+    int resultado = insRecEstrela(*raiz, item, &cresceu, &chaveRetorno, &apontadorRetorno, analise);
 
     //A inserção falhou ou a chave já existia
     if (resultado != 1) {
@@ -387,8 +343,7 @@ void InsereArvoreB_estrela(TipoApontadorE *raiz, RegistroIndiceBEstrela item, An
 
     /* Caso 3: a raiz se dividiu. Cria uma nova raiz interna com a chave separadora e os ponteiros para as páginas esquerda e direita.
     */
-    TipoApontadorE novaRaiz =
-        calloc(1, sizeof(TipoPaginaE));
+    TipoApontadorE novaRaiz = calloc(1, sizeof(TipoPaginaE));
 
     if (novaRaiz == NULL) {
         //A alocação falhou depois da divisão da raiz
@@ -520,7 +475,7 @@ int PesquisarChaveB_estrela(TipoApontadorE raiz, FILE *arq, int chave, Item *res
         return 0;
     }
     /* A posição armazenada é o número do registro, começando em zero */
-    if (fseek(arq, indice.posicaoNoArquivo * (long)sizeof(Item),SEEK_SET) != 0) {
+    if (FSEEK64(arq, (long long)indice.posicaoNoArquivo * sizeof(Item), SEEK_SET) != 0) {
 
         analise->tempoExecucao +=((double)(clock() - inicio)) / CLOCKS_PER_SEC;
         return 0;
@@ -537,9 +492,11 @@ int PesquisarChaveB_estrela(TipoApontadorE raiz, FILE *arq, int chave, Item *res
 
 void liberaArvoreB_estrela(TipoApontadorE raiz) {
     if (raiz == NULL) return;
-    if (raiz->Pt == Interna)
-        for (int i = 0; i <= raiz->UU.U0.ni; i++)
+    if (raiz->Pt == Interna){
+        for (int i = 0; i <= raiz->UU.U0.ni; i++){
             liberaArvoreB_estrela(raiz->UU.U0.pi[i]);
+        }
+    }
     free(raiz);
 }
 
