@@ -1,4 +1,4 @@
-#include "../inlcudes/paginacao.h"
+#include "../headers/paginacao.h"
 
 #include <stdlib.h>
 #include <time.h>

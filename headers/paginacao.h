@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-#include "../../item.h"
+#include "../item.h"
 
 /* Quantidade de registros que compõem uma página do arquivo. */
 #define ITENS_POR_PAGINA 4
@@ -23,28 +23,15 @@ typedef struct {
  * O ponteiro duplo permite que a função devolva a memória alocada ao chamador.
  * Retorna 1 em caso de sucesso e 0 em caso de erro.
  */
-int criaTabelaIndices(FILE *arquivo,
-                      Indice **tabela,
-                      int *tamanhoTabela,
-                      AnaliseExperimental *metricas);
+int criaTabelaIndices(FILE *arquivo, Indice **tabela, int *tamanhoTabela, AnaliseExperimental *metricas);
 
 /*
  * Localiza a página pelo índice, carrega essa página e procura a chave nela.
  * Quando encontra o registro, copia seus dados para resultado.
  */
-int pesquisaSequencialIndexada(FILE *arquivo,
-                               const Indice tabela[],
-                               int tamanhoTabela,
-                               int chave,
-                               Item *resultado,
-                               AnaliseExperimental *metricas);
+int pesquisaSequencialIndexada(FILE *arquivo, const Indice tabela[], int tamanhoTabela, int chave, Item *resultado, AnaliseExperimental *metricas);
 
 /* Executa o método 1 e apresenta o registro e as métricas coletadas. */
-void executarMetodo1(int quantidade,
-                     int situacao,
-                     int chaveBusca,
-                     int imprimir,
-                     const char *nomeArquivo,
-                     AnaliseExperimental *metricas);
+void executarMetodo1(int quantidade, int situacao, int chaveBusca, int imprimir, const char *nomeArquivo, AnaliseExperimental *metricas);
 
 #endif
