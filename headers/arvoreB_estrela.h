@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "../../item.h"
+#include "../item.h"
 
 //Registro armazenado no índice da árvore
 typedef struct {

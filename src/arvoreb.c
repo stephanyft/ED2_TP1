@@ -1,10 +1,9 @@
 #include <stdio.h>
-#include "arvoreb.h"
+#include "../headers/arvoreb.h"
 #include <stdlib.h>
 #include <string.h>
-#include "../item.h"
 #include <time.h>
-#include "../geradorDeArquivos.h"
+
 
 void inicializa(TipoApontador* Arvore) {
     *Arvore = NULL;

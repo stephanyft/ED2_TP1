@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "abp.h"
+#include "../headers/abp.h"
 
 //Função para inicializar a ABP a partir de um arquivo de registros
 FILE* inicializaABP(FILE *arq, AnaliseExperimental *analise) {

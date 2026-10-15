@@ -1,12 +1,12 @@
-#include "ARVORE-B/arvoreb.h"
-#include "ABP/abp.h"
-#include "ArvoreB_Estrela/includes/arvoreB_estrela.h"
+#include "headers/arvoreb.h"
+#include "headers/abp.h"
+#include "headers/arvoreB_estrela.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include "item.h"
-#include "geradorDeArquivos.h"
+#include "headers/geradorDeArquivos.h"
 
 int main(int argc, char *argv[]){
     if(argc < 5 || argc > 6){

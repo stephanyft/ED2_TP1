@@ -1,4 +1,4 @@
-#include "geradorDeArquivos.h"
+#include "../headers/geradorDeArquivos.h"
 
 void gerarString(char *str, int tamanho){
     memset(str, 'a', tamanho - 1);

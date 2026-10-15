@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "item.h"
+#include "../item.h"
 
 void gerarString(char *str, int tamanho);
 void embaralhar(int *vetor, int n);

@@ -1,4 +1,4 @@
-#include "../includes/arvoreB_estrela.h"
+#include "../headers/arvoreB_estrela.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
