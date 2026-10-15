@@ -11,5 +11,6 @@ void gerarString(char *str, int tamanho);
 void embaralhar(int *vetor, int n);
 int gerarArquivo(int quantReg, int situacao, const char *nomeArq);
 void mostraArquivo(const char *nomeArq);
+void sortearChaves(const char *nomeArq, int quantidade, int *chaves, int numChaves);
 
 #endif

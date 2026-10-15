@@ -77,3 +77,39 @@ void mostraArquivo(const char *nomeArq){
 
     fclose(arquivo);
 }
+
+// Sorteia chaves que comprovadamente existem no arquivo//
+ 
+void sortearChaves(const char *nomeArq, int quantidade, int *chaves, int numChaves) {
+    FILE *arquivo = fopen(nomeArq, "rb");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo para sorteio das chaves.\n");
+        return;
+    }
+
+    Item reg;
+    int sorteadas = 0;
+
+    while (sorteadas < numChaves) {
+        long long pos = ((long long)rand() * rand()) % quantidade;
+        
+        fseek(arquivo, pos * sizeof(Item), SEEK_SET);
+        
+        // Verifica se essa chave já foi sorteada antes//
+        if (fread(&reg, sizeof(Item), 1, arquivo) == 1) {
+            int repetida = 0;
+            for (int i = 0; i < sorteadas; i++) {
+                if (chaves[i] == reg.chave) {
+                    repetida = 1;
+                    break;
+                }
+            }
+            if (!repetida) {
+                chaves[sorteadas] = reg.chave;
+                sorteadas++;
+            }
+        }
+    }
+    
+    fclose(arquivo);
+}
