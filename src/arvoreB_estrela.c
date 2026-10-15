@@ -3,11 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void CriaArvoreB_estrela(
-    FILE *arq,
-    TipoApontadorE *raiz,
-    AnaliseExperimental *analise
-) {
+void CriaArvoreB_estrela(FILE *arq, TipoApontadorE *raiz, AnaliseExperimental *analise) {
     if (arq == NULL || raiz == NULL || analise == NULL) {
         return;
     }
@@ -36,8 +32,7 @@ void CriaArvoreB_estrela(
         (double)(clock() - inicio) / CLOCKS_PER_SEC;
 }
 
-void InserePaginaInt(TipoPaginaE *pag, TipoApontadorE apontador, int ch)
-{
+void InserePaginaInt(TipoPaginaE *pag, TipoApontadorE apontador, int ch){
     /* Verifica se a página está cheia */
     if (pag->UU.U0.ni >= MM) {
         printf("Erro: página cheia!\n");
@@ -633,11 +628,7 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
 }
 
 
-void InsereArvoreB_estrela(
-    TipoApontadorE *raiz,
-    RegistroIndiceBEstrela item,
-    AnaliseExperimental *analise
-) {
+void InsereArvoreB_estrela(TipoApontadorE *raiz, RegistroIndiceBEstrela item, AnaliseExperimental *analise) {
     if (raiz == NULL || analise == NULL) {
         return;
     }
@@ -704,10 +695,7 @@ void InsereArvoreB_estrela(
 }
 
 //Impressão recursiva da árvore
-void printArvoreEstrelaRec(
-    TipoApontadorE raiz,
-    int nivel
-) {
+void printArvoreEstrelaRec(TipoApontadorE raiz, int nivel) {
     if (raiz == NULL) {
         return;
     }
