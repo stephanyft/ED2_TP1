@@ -1,6 +1,7 @@
 #include "headers/arvoreb.h"
 #include "headers/abp.h"
 #include "headers/arvoreB_estrela.h"
+#include "headers/paginacao.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,8 +77,7 @@ int main(int argc, char *argv[]){
 
         switch(metodo) {
             case 1:
-                printf("Metodo 1 ainda nao implementado\n");
-                // executarMetodo1(quantidade, situacao, chavesBusca[i], impAtual, nomeArq, &metricas); //
+                executarMetodo1(quantidade, situacao, chavesBusca[i], impAtual, nomeArq, &metricas);
                 break;
             case 2:
                 executarMetodo2(quantidade, situacao, chavesBusca[i], impAtual, nomeArq, &metricas);
