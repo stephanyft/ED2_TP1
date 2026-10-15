@@ -40,77 +40,29 @@ typedef struct TipoPaginaE {
     } UU;
 } TipoPaginaE;
 
-//Inserção em página interna
-void InserePaginaInt(
-    TipoPaginaE *pag,
-    TipoApontadorE apontador,
-    int ch
-);
-
 //Inserção em página externa
-int inserePaginaExterna(
-    TipoPaginaE *pagina,
-    RegistroIndiceBEstrela *item,
-    AnaliseExperimental *analise
-);
+int inserePaginaExterna(TipoPaginaE *pagina, RegistroIndiceBEstrela *item, AnaliseExperimental *analise);
 
 //Inserção recursiva, com divisão de páginas quando necessário
-int insRecEstrela(
-    TipoApontadorE pagina,
-    RegistroIndiceBEstrela item,
-    int *cresceu,
-    int *chaveRetorno,
-    TipoApontadorE *apontadorRetorno,
-    AnaliseExperimental *analise
-);
+int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresceu, int *chaveRetorno, TipoApontadorE *apontadorRetorno, AnaliseExperimental *analise);
 
 //Inserção na árvore inteira
-void InsereArvoreB_estrela(
-    TipoApontadorE *raiz,
-    RegistroIndiceBEstrela item,
-    AnaliseExperimental *analise
-);
+void InsereArvoreB_estrela(TipoApontadorE *raiz, RegistroIndiceBEstrela item, AnaliseExperimental *analise);
 
 //Construção do índice a partir do arquivo de registros
-void CriaArvoreB_estrela(
-    FILE *arq,
-    TipoApontadorE *raiz,
-    AnaliseExperimental *analise
-);
+void CriaArvoreB_estrela(FILE *arq, TipoApontadorE *raiz, AnaliseExperimental *analise);
 
 //Pesquisa recursiva no índice
-int PesquisaRecEstrela(
-    TipoApontadorE ap,
-    int chave,
-    RegistroIndiceBEstrela *indice,
-    AnaliseExperimental *analise
-);
+int PesquisaRecEstrela(TipoApontadorE ap, int chave, RegistroIndiceBEstrela *indice, AnaliseExperimental *analise);
 
 //Pesquisa e recuperação do registro no arquivo
-int PesquisarChaveB_estrela(
-    TipoApontadorE raiz,
-    FILE *arq,
-    int chave,
-    Item *resultado,
-    AnaliseExperimental *analise
-);
+int PesquisarChaveB_estrela(TipoApontadorE raiz, FILE *arq,int chave, Item *resultado, AnaliseExperimental *analise);
 
 //Impressão da árvore para depuração
-void printArvoreEstrelaRec(
-    TipoApontadorE raiz,
-    int nivel
-);
+void printArvoreEstrelaRec(TipoApontadorE raiz,int nivel);
 
-void printArvoreB_estrela(
-    TipoApontadorE raiz
-);
+void printArvoreB_estrela(TipoApontadorE raiz);
 
-void executarMetodo4(
-    int quantidade,
-    int situacao,
-    int chaveBusca,
-    int imprimir,
-    const char *nomeArquivo,
-    AnaliseExperimental *analise);
+void executarMetodo4(int quantidade, int situacao, int chaveBusca, int imprimir, const char *nomeArquivo, AnaliseExperimental *analise);
 
 #endif

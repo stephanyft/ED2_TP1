@@ -108,278 +108,6 @@ int inserePaginaExterna( TipoPaginaE *pagina, RegistroIndiceBEstrela *item,Anali
     return 1;
 }
 
-
-/* Copia uma sequência ordenada de índices para uma página externa. */
-static void preencherFolha(TipoApontadorE pagina, const RegistroIndiceBEstrela itens[], int inicio, int quantidade) {
-    pagina->Pt = Externa;
-    pagina->UU.U1.ne = quantidade;
-
-    for (int i = 0; i < quantidade; i++) {
-        pagina->UU.U1.re[i] = itens[inicio + i];
-    }
-}
-
-
-/* Trata a divisão de uma página externa usando um irmão.*/
-static int trataIrmaFolha(TipoApontadorE pai, int indiceFilho, TipoApontadorE *novaFolha) {
-    if (pai == NULL || pai->Pt != Interna ||
-        novaFolha == NULL || *novaFolha == NULL) {
-        return 0;
-    }
-
-    int nPai = pai->UU.U0.ni;
-
-    if (indiceFilho < 0 || indiceFilho > nPai) {
-        return -1;
-    }
-
-    TipoApontadorE atual = pai->UU.U0.pi[indiceFilho];
-    TipoApontadorE nova = *novaFolha;
-
-    if (atual == NULL ||
-        atual->Pt != Externa ||
-        nova->Pt != Externa) {
-        return 0;
-    }
-
-    TipoApontadorE esquerda = NULL;
-    TipoApontadorE direita = NULL;
-
-    if (indiceFilho > 0) {
-        esquerda = pai->UU.U0.pi[indiceFilho - 1];
-    }
-
-    if (indiceFilho < nPai) {
-        direita = pai->UU.U0.pi[indiceFilho + 1];
-    }
-
-    /* Primeiro, tenta redistribuir com o irmão direito.*/
-    if (direita != NULL &&
-        direita->Pt == Externa &&
-        direita->UU.U1.ne >= 0 &&
-        direita->UU.U1.ne < MM) {
-
-        RegistroIndiceBEstrela itens[2 * MM + 1];
-        int total = 0;
-
-        for (int i = 0; i < atual->UU.U1.ne; i++) {
-            itens[total++] = atual->UU.U1.re[i];
-        }
-
-        for (int i = 0; i < nova->UU.U1.ne; i++) {
-            itens[total++] = nova->UU.U1.re[i];
-        }
-
-        for (int i = 0; i < direita->UU.U1.ne; i++) {
-            itens[total++] = direita->UU.U1.re[i];
-        }
-
-        if (total <= 2 * MM) {
-            int qtdEsquerda = total / 2;
-            int qtdDireita = total - qtdEsquerda;
-
-            preencherFolha(
-                atual, itens, 0, qtdEsquerda
-            );
-
-            preencherFolha(
-                direita, itens, qtdEsquerda, qtdDireita
-            );
-
-            /* A separadora é a menor chave do filho direito. */
-            pai->UU.U0.ri[indiceFilho] =
-                direita->UU.U1.re[0].chave;
-
-            free(nova);
-            *novaFolha = NULL;
-
-            return 1;
-        }
-    }
-
-    /* Se não deu para redistribuir à direita,tenta o irmão esquerdo.*/
-    if (esquerda != NULL &&
-        esquerda->Pt == Externa &&
-        esquerda->UU.U1.ne >= 0 &&
-        esquerda->UU.U1.ne < MM) {
-
-        RegistroIndiceBEstrela itens[2 * MM + 1];
-        int total = 0;
-
-        for (int i = 0; i < esquerda->UU.U1.ne; i++) {
-            itens[total++] = esquerda->UU.U1.re[i];
-        }
-
-        for (int i = 0; i < atual->UU.U1.ne; i++) {
-            itens[total++] = atual->UU.U1.re[i];
-        }
-
-        for (int i = 0; i < nova->UU.U1.ne; i++) {
-            itens[total++] = nova->UU.U1.re[i];
-        }
-
-        if (total <= 2 * MM) {
-            int qtdEsquerda = total / 2;
-            int qtdDireita = total - qtdEsquerda;
-
-            preencherFolha(
-                esquerda, itens, 0, qtdEsquerda
-            );
-
-            preencherFolha(
-                atual, itens, qtdEsquerda, qtdDireita
-            );
-
-            pai->UU.U0.ri[indiceFilho - 1] =
-                atual->UU.U1.re[0].chave;
-
-            free(nova);
-            *novaFolha = NULL;
-
-            return 1;
-        }
-    }
-
-    /* Se não existe irmão com espaço, tenta dividir duas páginas externas em três.*/
-    if (nPai < MM &&
-        direita != NULL &&
-        direita->Pt == Externa &&
-        direita->UU.U1.ne == MM) {
-
-        RegistroIndiceBEstrela itens[2 * MM + 1];
-        int total = 0;
-
-        for (int i = 0; i < atual->UU.U1.ne; i++) {
-            itens[total++] = atual->UU.U1.re[i];
-        }
-
-        for (int i = 0; i < nova->UU.U1.ne; i++) {
-            itens[total++] = nova->UU.U1.re[i];
-        }
-
-        for (int i = 0; i < direita->UU.U1.ne; i++) {
-            itens[total++] = direita->UU.U1.re[i];
-        }
-
-        if (total == 2 * MM + 1) {
-            int qtdEsquerda = total / 3;
-            int qtdMeio = (total - qtdEsquerda) / 2;
-            int qtdDireita = total - qtdEsquerda - qtdMeio;
-
-            preencherFolha(
-                atual, itens, 0, qtdEsquerda
-            );
-
-            preencherFolha(
-                nova, itens, qtdEsquerda, qtdMeio
-            );
-
-            preencherFolha(
-                direita, itens,
-                qtdEsquerda + qtdMeio,
-                qtdDireita
-            );
-
-            /* Abre espaço no pai para um novo ponteiro e uma nova chave separadora.*/
-            for (int j = nPai; j > indiceFilho; j--) {
-                pai->UU.U0.ri[j] =
-                    pai->UU.U0.ri[j - 1];
-            }
-
-            for (int j = nPai + 1;
-                 j > indiceFilho + 1; j--) {
-                pai->UU.U0.pi[j] =
-                    pai->UU.U0.pi[j - 1];
-            }
-
-            pai->UU.U0.pi[indiceFilho + 1] = nova;
-
-            pai->UU.U0.ri[indiceFilho] =
-                nova->UU.U1.re[0].chave;
-
-            pai->UU.U0.ri[indiceFilho + 1] =
-                direita->UU.U1.re[0].chave;
-
-            pai->UU.U0.ni++;
-
-            *novaFolha = NULL;
-
-            return 1;
-        }
-    }
-
-    /* Tenta a divisão de duas páginas em três usando o irmão esquerdo.*/
-    if (nPai < MM &&
-        esquerda != NULL &&
-        esquerda->Pt == Externa &&
-        esquerda->UU.U1.ne == MM) {
-
-        RegistroIndiceBEstrela itens[2 * MM + 1];
-        int total = 0;
-
-        for (int i = 0; i < esquerda->UU.U1.ne; i++) {
-            itens[total++] = esquerda->UU.U1.re[i];
-        }
-
-        for (int i = 0; i < atual->UU.U1.ne; i++) {
-            itens[total++] = atual->UU.U1.re[i];
-        }
-
-        for (int i = 0; i < nova->UU.U1.ne; i++) {
-            itens[total++] = nova->UU.U1.re[i];
-        }
-
-        if (total == 2 * MM + 1) {
-            int qtdEsquerda = total / 3;
-            int qtdMeio = (total - qtdEsquerda) / 2;
-            int qtdDireita = total - qtdEsquerda - qtdMeio;
-
-            preencherFolha(
-                esquerda, itens, 0, qtdEsquerda
-            );
-
-            preencherFolha(
-                atual, itens, qtdEsquerda, qtdMeio
-            );
-
-            preencherFolha(
-                nova, itens,
-                qtdEsquerda + qtdMeio,
-                qtdDireita
-            );
-
-            for (int j = nPai; j > indiceFilho; j--) {
-                pai->UU.U0.ri[j] =
-                    pai->UU.U0.ri[j - 1];
-            }
-
-            for (int j = nPai + 1;
-                 j > indiceFilho + 1; j--) {
-                pai->UU.U0.pi[j] =
-                    pai->UU.U0.pi[j - 1];
-            }
-
-            pai->UU.U0.pi[indiceFilho + 1] = nova;
-
-            pai->UU.U0.ri[indiceFilho - 1] =
-                atual->UU.U1.re[0].chave;
-
-            pai->UU.U0.ri[indiceFilho] =
-                nova->UU.U1.re[0].chave;
-
-            pai->UU.U0.ni++;
-
-            *novaFolha = NULL;
-
-            return 1;
-        }
-    }
-
-    /* O chamador deverá tratar a propagação. */
-    return 0;
-}
-
-
 //Insere recursivamente. Quando uma página precisa ser dividida, retorna a chave separadora e o ponteiro para a nova página à direita.
 int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresceu, int *chaveRetorno, TipoApontadorE *apontadorRetorno, AnaliseExperimental *analise){
     if (pagina == NULL || cresceu == NULL ||
@@ -518,23 +246,6 @@ int insRecEstrela(TipoApontadorE pagina, RegistroIndiceBEstrela item, int *cresc
 
     if (resultado != 1) {
         return resultado;
-    }
-    
-    /* Tenta aplicar a política de irmãos nas folhas. */
-    if (cresceuFilho &&
-        novaPaginaFilho != NULL &&
-        pagina->UU.U0.pi[i] != NULL &&
-        pagina->UU.U0.pi[i]->Pt == Externa &&
-        novaPaginaFilho->Pt == Externa) {
-
-        int tratado = trataIrmaFolha(pagina, i, &novaPaginaFilho);
-        if (tratado < 0) {
-            return -1;
-        }
-
-        if (tratado == 1) {
-            return 1;
-        }
     }
 
     //Se o filho não se dividiu, não há chave a propagar
@@ -832,6 +543,15 @@ void liberaArvoreB_estrela(TipoApontadorE raiz) {
     free(raiz);
 }
 
+// Guarda a arvore entre as 20 pesquisas do experimento
+static TipoApontadorE raizCache = NULL;
+
+// Chamada automaticamente ao fim do programa
+static void liberarMetodo4(void) {
+    liberaArvoreB_estrela(raizCache);
+    raizCache = NULL;
+}
+
 void executarMetodo4(int quantidade, int situacao, int chaveBusca, int imprimir, const char *nomeArquivo, AnaliseExperimental *analise) {
     FILE *arq = fopen(nomeArquivo, "rb");
     if (arq == NULL) {
@@ -839,53 +559,54 @@ void executarMetodo4(int quantidade, int situacao, int chaveBusca, int imprimir,
         return;
     }
 
-    AnaliseExperimental metricasI;
-    metricasI.numComparacoes = 0;
-    metricasI.numTransferencias = 0;
-    metricasI.tempoExecucao = 0.0;
-    
-    TipoApontadorE raiz = NULL;
-    printf("\nConstruindo a Arvore B* (Metodo 4)...\n");
-    CriaArvoreB_estrela(arq, &raiz, &metricasI);
+    // Constrói o índice só na primeira chamada
+    if (raizCache == NULL) {
+        AnaliseExperimental metricasI;
+        metricasI.numComparacoes = 0;
+        metricasI.numTransferencias = 0;
+        metricasI.tempoExecucao = 0.0;
 
+        printf("\nConstruindo a Arvore B* (Metodo 4)...\n");
+        CriaArvoreB_estrela(arq, &raizCache, &metricasI);
+        atexit(liberarMetodo4); // Libera a árvore ao final do programa
+
+        printf("\n--- METRICAS DE DESEMPENHO DE CRIAÇÃO ---\n");
+        printf("Numero de transferencias da Criação: %d\n", metricasI.numTransferencias);
+        printf("Numero de comparacoes da Criação: %d\n", metricasI.numComparacoes);
+        printf("Tempo de execucao da Criação: %.9f segundos\n", metricasI.tempoExecucao);
+    }
+
+    // Zera as métricas de PESQUISA (agora inclusive o tempo)
     analise->numComparacoes = 0;
     analise->numTransferencias = 0;
-    
+    analise->tempoExecucao = 0.0;
+
     Item resultado;
     printf("Pesquisando pela chave %d...\n", chaveBusca);
-    int encontrado = PesquisarChaveB_estrela(raiz, arq, chaveBusca, &resultado, analise);
+    int encontrado = PesquisarChaveB_estrela(raizCache, arq, chaveBusca, &resultado, analise);
 
-    if(encontrado) {
+    if (encontrado) {
         printf("\n--- REGISTRO ENCONTRADO! ---\n");
         printf("Chave: %d\n", chaveBusca);
         printf("Dado 1: %ld\n", resultado.dado1);
         printf("Dado 2: %.50s...\n", resultado.dado2);
-
-        printf("\n\n--- METRICAS DE DESEMPENHO DE CRIAÇÃO ---\n");
-        printf("Numero de transferencias da Criação: %d\n", metricasI.numTransferencias);
-        printf("Numero de comparacoes da Criação: %d\n", metricasI.numComparacoes);
-        printf("Tempo de execucao da Criação: %.5f segundos\n", metricasI.tempoExecucao);
-        
-        printf("\n\n--- METRICAS DE DESEMPENHO DE PESQUISA ---\n");
-        printf("Numero de transferencias da Pesquisa: %d\n", analise->numTransferencias);
-        printf("Numero de comparacoes da Pesquisa: %d\n", analise->numComparacoes);
-        printf("Tempo de execucao da Pesquisa: %.5f segundos\n", analise->tempoExecucao);
-    }
-    else {
+    } else {
         printf("Chave %d não encontrada na Arvore B*.\n", chaveBusca);
     }
 
+    printf("\n--- METRICAS DE DESEMPENHO DE PESQUISA ---\n");
+    printf("Numero de transferencias da Pesquisa: %d\n", analise->numTransferencias);
+    printf("Numero de comparacoes da Pesquisa: %d\n", analise->numComparacoes);
+    printf("Tempo de execucao da Pesquisa: %.9f segundos\n", analise->tempoExecucao);
+
     if (imprimir) {
         printf("\n--- CHAVES DE PESQUISA DO ARQUIVO ---\n");
-        rewind(arq); 
+        rewind(arq);
         Item regTemp;
-        
-        while(fread(&regTemp, sizeof(Item), 1, arq) == 1) {
-            printf("Chave: %d , Dado1: %ld , Dado2: %.50s\n", regTemp.chave, regTemp.dado1, regTemp.dado2);
+        while (fread(&regTemp, sizeof(Item), 1, arq) == 1) {
+            printf("%d\n", regTemp.chave);
         }
-        printf("\n");
     }
 
-    liberaArvoreB_estrela(raiz);
     fclose(arq);
 }
